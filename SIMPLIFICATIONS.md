@@ -41,3 +41,6 @@ Where Hermit's simulated shells differ from the real thing. Each line is a delib
 - Scripts run line by line through the same simulated shell. Variables, functions, loops and `if` inside scripts are not simulated.
 - PowerShell `Where-Object` and `ForEach-Object` understand the simplified syntax (`Where-Object Name -like "*.txt"`) and one-comparison script blocks (`{ $_.Length -gt 100 }`). Anything longer prints a friendly "not simulated" message.
 - `Start-Process pwsh -Verb RunAs` skips the real UAC dialog and simply makes the session an administrator one.
+- `Group-Object` sizes its Name column to fit, where PowerShell pads it to 25 characters. Its Group column shows the items as text.
+- Processes are owned either by you or by root / SYSTEM (`admin: true` in a seed). There are no other users, and no signals beyond "stop".
+- Lessons may start Windows with `RemoteSigned` already set, standing in for "you did this on your computer earlier".

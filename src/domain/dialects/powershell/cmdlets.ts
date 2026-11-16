@@ -763,7 +763,7 @@ const stopProcess: Cmdlet = {
     if (targets.length === 0 && errors.length === 0) return fail(state, 'Stop-Process: Cannot process command because of one or more missing mandatory parameters: Id.');
     const allowed = targets.filter((pid) => {
       const p = state.processes.find((x) => x.pid === pid);
-      if (p !== undefined && pid === 4 && !state.isAdmin) {
+      if (p !== undefined && p.admin === true && !state.isAdmin) {
         errors.push(`Stop-Process: Cannot stop process "${p.name} (${pid})" because of the following error: Access is denied.`);
         return false;
       }

@@ -17,6 +17,8 @@ export type SeedState = {
   readonly cwd?: string;
   readonly env?: Readonly<Record<string, string>>;
   readonly processes?: readonly Process[];
+  /** Windows only. Defaults to Restricted, like a fresh Windows install. */
+  readonly executionPolicy?: MachineState['executionPolicy'];
 };
 
 export const USER = 'you';
@@ -63,15 +65,15 @@ const skeleton = (os: OS): DirNode => {
 
 const DEFAULT_PROCESSES: Readonly<Record<OS, readonly Process[]>> = {
   linux: [
-    { pid: 1, name: 'systemd', cpu: 0 },
+    { pid: 1, name: 'systemd', cpu: 0, admin: true },
     { pid: 312, name: 'hermitd', cpu: 0.3 },
   ],
   mac: [
-    { pid: 1, name: 'launchd', cpu: 0 },
+    { pid: 1, name: 'launchd', cpu: 0, admin: true },
     { pid: 312, name: 'hermitd', cpu: 0.3 },
   ],
   windows: [
-    { pid: 4, name: 'System', cpu: 0 },
+    { pid: 4, name: 'System', cpu: 0, admin: true },
     { pid: 312, name: 'hermitd', cpu: 0.3 },
   ],
 };
@@ -125,7 +127,7 @@ export const buildMachine = (os: OS, seed: SeedState = {}): MachineState => {
     processes: [...DEFAULT_PROCESSES[os], ...(seed.processes ?? [])],
     installed: [],
     isAdmin: false,
-    ...(os === 'windows' ? { executionPolicy: 'Restricted' as const } : {}),
+    ...(os === 'windows' ? { executionPolicy: seed.executionPolicy ?? 'Restricted' } : {}),
   };
 };
 

@@ -123,3 +123,21 @@ describe('scripts, chmod and sudo', () => {
     expect(r.state.isAdmin).toBe(false);
   });
 });
+
+describe('processes owned by root', () => {
+  const rooted = (): MachineState => buildMachine('linux', { processes: [{ pid: 666, name: 'updater', cpu: 98.7, admin: true }, { pid: 1501, name: 'bubbles', cpu: 4 }] });
+  it('ps aux shows root as the owner', () => {
+    expect(run('ps aux', rooted()).stdout).toMatch(/^root +666 /m);
+  });
+  it('kill needs sudo', () => {
+    expect(run('kill 666', rooted()).stderr).toBe('bash: kill: (666) - Operation not permitted');
+    expect(run('sudo kill 666', rooted()).state.processes.some((p) => p.pid === 666)).toBe(false);
+  });
+  it('pkill reports the ones it could not stop', () => {
+    const r = run('pkill updater', rooted());
+    expect(r.stderr).toBe('pkill: killing pid 666 failed: Operation not permitted');
+    expect(r.exitCode).toBe(1);
+    expect(r.state.processes.map((p) => p.name)).toContain('updater');
+    expect(run('pkill bubbles', rooted()).state.processes.map((p) => p.name)).not.toContain('bubbles');
+  });
+});

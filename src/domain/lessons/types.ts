@@ -16,6 +16,10 @@ export type Goal =
   | { readonly kind: 'envIs'; readonly name: string; readonly value: string }
   | { readonly kind: 'processGone'; readonly name: string }
   | { readonly kind: 'installed'; readonly pkg: string }
+  /** The script may run: the execute bit on Linux and macOS, an execution policy that allows local scripts on Windows. */
+  | { readonly kind: 'canRun'; readonly path: string }
+  /** Running as root or in an Administrator window. */
+  | { readonly kind: 'isAdmin' }
   | { readonly kind: 'all'; readonly goals: readonly Goal[] };
 
 /** A command, flag or symbol the learner can be taught, like `pwd`, `ls-a` or `cd-up`. */

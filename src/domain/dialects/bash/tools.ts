@@ -276,7 +276,7 @@ export const posixTools = (flavor: Flavor): Readonly<Record<string, CommandHandl
       ? 'USER         PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND'
       : 'USER               PID  %CPU %MEM      VSZ    RSS   TT  STAT STARTED      TIME COMMAND';
     const rows = procs.map((p) => {
-      const user = p.pid === 1 ? 'root' : 'you';
+      const user = p.admin === true ? 'root' : 'you';
       const cpu = p.cpu.toFixed(1);
       return gnu
         ? `${user.padEnd(10)} ${String(p.pid).padStart(5)} ${cpu.padStart(4)}  0.4 123456  9876 ?        S    18:00   0:01 ${p.name}`
@@ -307,8 +307,8 @@ export const posixTools = (flavor: Flavor): Readonly<Record<string, CommandHandl
         errs.push(gnu ? `bash: kill: ${t}: arguments must be process or job IDs` : `kill: illegal pid: ${t}`);
         continue;
       }
-      if (pid === 1 && !state.isAdmin) {
-        errs.push(gnu ? `bash: kill: (1) - Operation not permitted` : `kill: kill 1 failed: operation not permitted`);
+      if (procs.some((p) => p.pid === pid && p.admin === true) && !state.isAdmin) {
+        errs.push(gnu ? `bash: kill: (${pid}) - Operation not permitted` : `kill: kill ${pid} failed: operation not permitted`);
         continue;
       }
       if (!procs.some((p) => p.pid === pid)) {
@@ -325,8 +325,11 @@ export const posixTools = (flavor: Flavor): Readonly<Record<string, CommandHandl
     if (pattern === undefined) return result(state, { stderr: gnu ? 'pkill: no matching criteria specified' : 'usage: pkill [-signal] [-fix] pattern ...', exitCode: 2 });
     const re = breToRegExp(pattern, flags.has('i'));
     const hit = (name: string): boolean => (flags.has('x') ? name === pattern : (re?.test(name) ?? false));
-    const victims = state.processes.filter((p) => hit(p.name) && (p.pid !== 1 || state.isAdmin));
-    return result({ ...state, processes: state.processes.filter((p) => !victims.includes(p)) }, { exitCode: victims.length > 0 ? 0 : 1 });
+    const matches = state.processes.filter((p) => hit(p.name));
+    const victims = matches.filter((p) => p.admin !== true || state.isAdmin);
+    const denied = matches.filter((p) => !victims.includes(p));
+    const stderr = denied.map((p) => (gnu ? `pkill: killing pid ${p.pid} failed: Operation not permitted` : `pkill: signalling pid ${p.pid}: Operation not permitted`)).join('\n');
+    return result({ ...state, processes: state.processes.filter((p) => !victims.includes(p)) }, { stderr, exitCode: victims.length > 0 && denied.length === 0 ? 0 : 1 });
   });
 
   // ---------- permissions ----------

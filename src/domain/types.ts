@@ -17,7 +17,8 @@ export type DirNode = {
 
 export type VNode = FileNode | DirNode;
 
-export type Process = { readonly pid: number; readonly name: string; readonly cpu: number };
+/** `admin`: owned by root / SYSTEM, so stopping it needs sudo or an Administrator window. */
+export type Process = { readonly pid: number; readonly name: string; readonly cpu: number; readonly admin?: boolean };
 
 export type MachineState = {
   readonly root: DirNode;

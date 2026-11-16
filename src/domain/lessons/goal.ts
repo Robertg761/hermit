@@ -39,6 +39,13 @@ export const goalMet = (goal: Goal, os: OS, state: MachineState, last: CommandRe
       return !state.processes.some((p) => p.name === goal.name);
     case 'installed':
       return state.installed.includes(goal.pkg);
+    case 'canRun': {
+      if (os === 'windows') return state.executionPolicy === 'RemoteSigned' || state.executionPolicy === 'Unrestricted' || state.executionPolicy === 'Bypass';
+      const r = getNode(state.root, seedPath(os, goal.path), eq);
+      return r.ok && r.value.kind === 'file' && r.value.executable === true;
+    }
+    case 'isAdmin':
+      return state.isAdmin;
     case 'all':
       return goal.goals.every((g) => goalMet(g, os, state, last));
   }
