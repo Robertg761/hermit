@@ -31,6 +31,8 @@ export const goalMet = (goal: Goal, os: OS, state: MachineState, last: CommandRe
     }
     case 'stdoutIncludes':
       return last !== null && last.stdout.includes(goal.text);
+    case 'stdoutExcludes':
+      return last !== null && last.stdout.trim() !== '' && !last.stdout.includes(goal.text);
     case 'envIs':
       return state.env[goal.name] === goal.value;
     case 'processGone':

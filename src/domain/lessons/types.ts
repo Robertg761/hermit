@@ -11,6 +11,8 @@ export type Goal =
   | { readonly kind: 'fileEquals'; readonly path: string; readonly text: string }
   | { readonly kind: 'cwdIs'; readonly path: string }
   | { readonly kind: 'stdoutIncludes'; readonly text: string }
+  /** The last command printed something, but not this. Pairs with stdoutIncludes to rule out `cat`. */
+  | { readonly kind: 'stdoutExcludes'; readonly text: string }
   | { readonly kind: 'envIs'; readonly name: string; readonly value: string }
   | { readonly kind: 'processGone'; readonly name: string }
   | { readonly kind: 'installed'; readonly pkg: string }
