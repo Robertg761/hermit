@@ -581,6 +581,39 @@ const sortObject: Cmdlet = {
   },
 };
 
+const groupObject: Cmdlet = {
+  name: 'Group-Object',
+  params: [{ name: 'Property', kind: 'value', position: 0, type: 'System.Object[]' }, { name: 'NoElement', kind: 'switch' }, { name: 'CaseSensitive', kind: 'switch' }],
+  run: (b, input, state) => {
+    const props = strs(b, 'Property');
+    const groups: { key: string; items: PsObject[] }[] = [];
+    for (const o of input) {
+      const k = sortKey(o, props);
+      const key = k === null ? '' : objectToString(k);
+      const g = groups.find((x) => (has(b, 'CaseSensitive') ? x.key === key : x.key.toLowerCase() === key.toLowerCase()));
+      if (g === undefined) groups.push({ key, items: [o] });
+      else g.items.push(o);
+    }
+    return ok(
+      state,
+      groups.map((g): PsObject => ({
+        type: 'record',
+        props: [
+          ['Count', { type: 'number', value: g.items.length }],
+          ['Name', { type: 'string', value: g.key }],
+          ...(has(b, 'NoElement') ? [] : [['Group', { type: 'string', value: `{${g.items.map((o) => objectToString(o)).join(', ')}}` }] as const]),
+        ],
+      })),
+    );
+  },
+};
+
+const getUnique: Cmdlet = {
+  name: 'Get-Unique',
+  params: [{ name: 'AsString', kind: 'switch' }],
+  run: (_b, input, state) => ok(state, input.filter((o, i) => i === 0 || objectToString(o) !== objectToString(input[i - 1] ?? o))),
+};
+
 const selectObject: Cmdlet = {
   name: 'Select-Object',
   params: [{ name: 'Property', kind: 'value', position: 0, type: 'System.Object[]' }, { name: 'First', kind: 'value', type: 'System.Int32' }, { name: 'Last', kind: 'value', type: 'System.Int32' }, { name: 'Skip', kind: 'value', type: 'System.Int32' }, { name: 'Unique', kind: 'switch' }, { name: 'ExpandProperty', kind: 'value' }],
@@ -792,6 +825,8 @@ const startProcess: Cmdlet = {
 };
 
 export const cmdlets: readonly Cmdlet[] = [
+  groupObject,
+  getUnique,
   getLocation,
   setLocation,
   getChildItem,
@@ -861,6 +896,8 @@ export const psAliases: Readonly<Record<string, string>> = {
   foreach: 'ForEach-Object',
   '%': 'ForEach-Object',
   sort: 'Sort-Object',
+  group: 'Group-Object',
+  gu: 'Get-Unique',
   select: 'Select-Object',
   sls: 'Select-String',
   measure: 'Measure-Object',

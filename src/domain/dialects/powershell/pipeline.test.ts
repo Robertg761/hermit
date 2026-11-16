@@ -110,3 +110,18 @@ describe('scripts and execution policy', () => {
     expect(run('Start-Process pwsh -Verb RunAs').state.isAdmin).toBe(true);
   });
 });
+
+describe('Group-Object and Get-Unique', () => {
+  it('groups equal lines and counts them, in first-seen order', () => {
+    expect(run('Get-Content names.txt | Group-Object').stdout).toBe(
+      '\nCount Name Group\n----- ---- -----\n    2 sam  {sam, sam}\n    2 alex {alex, alex}\n    1 kim  {kim}\n\n',
+    );
+  });
+  it('sorts groups by count', () => {
+    expect(run('Get-Content names.txt | Group-Object -NoElement | Sort-Object Count | Select-Object -First 1 -ExpandProperty Name').stdout).toBe('kim\n');
+  });
+  it('Get-Unique drops adjacent repeats only', () => {
+    expect(run('Get-Content names.txt | Get-Unique').stdout).toBe('sam\nalex\nsam\nkim\nalex\n');
+    expect(run('Get-Content names.txt | Sort-Object | Get-Unique').stdout).toBe('alex\nkim\nsam\n');
+  });
+});
