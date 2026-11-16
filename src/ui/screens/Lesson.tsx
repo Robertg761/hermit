@@ -109,6 +109,10 @@ export function Lesson({ lesson, os, dialect, onExit, onComplete }: Props) {
     }
     if (event.step.outcome === 'error') {
       loseHeart();
+      if (r.wrongOs !== undefined) {
+        setSpeech({ mood: 'smug', text: r.wrongOs });
+        return { stdout: r.stdout, stderr: r.stderr, clear, note: `Shellby: ${r.wrongOs.replace(/`/g, '')}` };
+      }
       setSpeech(say('error', 'sad'));
     } else if (line.trim().length > 0) {
       setSpeech((s) => (s.mood === 'sad' ? { mood: 'idle', text: s.text } : s));
