@@ -1,7 +1,7 @@
 import type { CommandResult, Effect, MachineState } from '../../types';
 import type { CommandHandler, Dialect, PsObject } from '../dialect';
 import { inputText, result } from '../dialect';
-import { writeFile, caseInsensitive as ci } from '../../vfs/vfs';
+import { getNode, writeFile, caseInsensitive as ci } from '../../vfs/vfs';
 import type { BoundArg } from './binder';
 import { bindAndRun, cmdlets, findCmdlet, psAliases } from './cmdlets';
 import { formatObjects, getProperty, objectToString } from './format';
@@ -68,6 +68,8 @@ const evalExpr = (expr: Expr, ctx: Ctx): readonly PsObject[] => {
       return readVar(expr.name, ctx.state, ctx.lastOk);
     case 'array':
       return expr.items.flatMap((e) => evalExpr(e, ctx));
+    case 'block':
+      return [{ type: 'scriptblock', text: expr.text }];
     case 'sub': {
       const r = runStatements(expr.body, ctx.state, ctx.lastOk);
       ctx.state = r.state;
@@ -116,14 +118,66 @@ const runElement = (el: Element, input: readonly PsObject[], ctx: Ctx): readonly
   }
   const cmdlet = findCmdlet(el.name);
   if (cmdlet === undefined) {
-    ctx.errors.push(notRecognized(el.name));
-    return null;
+    const script = runScript(el.name, ctx.state);
+    if (script === null) {
+      ctx.errors.push(notRecognized(el.name));
+      return null;
+    }
+    ctx.state = script.state;
+    ctx.errors.push(...script.errors);
+    ctx.effects.push(...script.effects);
+    return script.ok || script.out.length > 0 ? script.out : null;
   }
   const r = bindAndRun(cmdlet, evalArgs(el.args, ctx), input, ctx.state);
   ctx.state = r.state;
   ctx.errors.push(...r.errors);
   if (r.effects) ctx.effects.push(...r.effects);
   return r.out;
+};
+
+const SCRIPTS_DISABLED = (path: string, raw: string): string =>
+  `${raw}: File ${path} cannot be loaded because running scripts is disabled on this system. For more information, see about_Execution_Policies at https://go.microsoft.com/fwlink/?LinkID=135170.`;
+
+/**
+ * `.\build.ps1`: scripts need a path (PowerShell never runs scripts from the current folder by
+ * bare name) and an execution policy that allows them. Returns null when there is no such file.
+ */
+const runScript = (raw: string, state: MachineState): Exec | null => {
+  const looksLikePath = /^\.{1,2}[\\/]|[\\/]|^[A-Za-z]:/.test(raw);
+  const path = parseWinPath(raw, state);
+  if (path === null) return null;
+  const node = getNode(state.root, path, ci);
+  if (!node.ok || node.value.kind !== 'file') return null;
+  const fail = (msg: string): Exec => ({ state, out: [], errors: [msg], effects: [], ok: false });
+  if (!looksLikePath) {
+    return fail(
+      `${notRecognized(raw)}\n\nSuggestion [3,General]: The command "${raw}" was not found, but does exist in the current location. PowerShell does not load commands from the current location by default. If you trust this command, instead type: ".\\${raw}". See "get-help about_Command_Precedence" for more details.`,
+    );
+  }
+  if (!/\.ps1$/i.test(raw)) return null;
+  const policy = state.executionPolicy ?? 'Restricted';
+  if (policy === 'Restricted' || policy === 'AllSigned') return fail(SCRIPTS_DISABLED(formatWinPath(path), raw));
+  let cur = state;
+  const out: PsObject[] = [];
+  const errors: string[] = [];
+  const effects: Effect[] = [];
+  let ok = true;
+  for (const line of node.value.content.split(/\r?\n/)) {
+    if (line.trim() === '' || line.trim().startsWith('#')) continue;
+    const parsed = parsePowerShell(line);
+    if (!parsed.ok) {
+      errors.push(`ParserError: ${parsed.error}`);
+      ok = false;
+      continue;
+    }
+    const r = runStatements(parsed.list, cur, true);
+    cur = r.state;
+    out.push(...r.out);
+    errors.push(...r.errors);
+    effects.push(...r.effects);
+    ok = ok && r.ok;
+  }
+  return { state: cur, out, errors, effects, ok };
 };
 
 const runPipeline = (p: Pipeline, state: MachineState, lastOk: boolean): Exec => {

@@ -123,6 +123,18 @@ export const wrongOsRules: readonly WrongOsRule[] = [
     explain: 'No terminal editor here by default. Try `notepad file.txt`.',
     examples: ['nano notes.txt'],
   },
+  {
+    on: WIN,
+    test: cmd('kill|ps', '\\s+-?(?:9|aux|ef)\\b'),
+    explain: 'In PowerShell, `ps` is `Get-Process` and `kill` is `Stop-Process`, with PowerShell parameters: `Stop-Process -Id 4242 -Force`.',
+    examples: ['kill -9 4242', 'ps aux'],
+  },
+  {
+    on: WIN,
+    test: /(?:^|[;|&]\s*)\.\/\S+\.sh(?=\s|$)/,
+    explain: '`.sh` scripts are for bash. PowerShell scripts end in `.ps1` and run like `.\\build.ps1`.',
+    examples: ['./build.sh'],
+  },
   // ---- Windows habits on Linux / macOS ----
   {
     on: POSIX,
@@ -231,6 +243,12 @@ export const wrongOsRules: readonly WrongOsRule[] = [
     test: cmd('winget|choco'),
     explain: 'Linux installs with `sudo apt install name`; macOS usually uses `brew install name`.',
     examples: ['winget install git'],
+  },
+  {
+    on: POSIX,
+    test: /(?:^|[;|&]\s*)\.\\/,
+    explain: 'That backslash is the Windows way. Here, run a script from this folder with `./build.sh`.',
+    examples: ['.\\build.ps1'],
   },
   // ---- Linux and macOS differences ----
   {

@@ -27,7 +27,7 @@ export type MachineState = {
   readonly processes: readonly Process[];
   readonly installed: readonly string[];
   readonly isAdmin: boolean;
-  readonly executionPolicy?: 'Restricted' | 'RemoteSigned';
+  readonly executionPolicy?: 'Restricted' | 'RemoteSigned' | 'Unrestricted' | 'Bypass' | 'AllSigned';
 };
 
 export type Effect =

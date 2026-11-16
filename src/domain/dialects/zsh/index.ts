@@ -1,13 +1,14 @@
 import { posixCommands } from '../bash/commands';
 import { formatPosixPath, parsePosixPath } from '../bash/paths';
 import { runLine, type ShellConfig } from '../bash/run';
+import { posixTools } from '../bash/tools';
 import type { Dialect } from '../dialect';
 import type { MachineState } from '../../types';
 import { macCommands } from './commands';
 
 export const zshConfig: ShellConfig = {
   shellName: 'zsh',
-  commands: { ...posixCommands('bsd'), ...macCommands },
+  commands: { ...posixCommands('bsd'), ...posixTools('bsd'), ...macCommands },
   aliases: { ll: 'ls -l', la: 'ls -A' },
   notFound: (name) => `zsh: command not found: ${name}`,
   nomatchError: true,

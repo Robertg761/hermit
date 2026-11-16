@@ -455,6 +455,342 @@ const getHelp: Cmdlet = {
   },
 };
 
+
+// ---------------- Units 3 to 5: searching, pipelines, processes ----------------
+
+const num = (o: PsObject | null): number | null => {
+  if (o === null) return null;
+  if (o.type === 'number') return o.value;
+  if (o.type === 'string' && /^-?\d+(\.\d+)?$/.test(o.value.trim())) return Number(o.value);
+  return null;
+};
+
+const wildcard = (pattern: string): RegExp =>
+  new RegExp(`^${pattern.replace(/[.+^${}()|\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.')}$`, 'i');
+
+/** PowerShell comparison operators, case-insensitive like the real ones. */
+const compare = (op: string, left: PsObject | null, right: string): boolean | null => {
+  const l = left === null ? '' : objectToString(left);
+  const ln = num(left);
+  const rn = /^-?\d+(\.\d+)?$/.test(right) ? Number(right) : null;
+  const cmp = ln !== null && rn !== null ? ln - rn : l.localeCompare(right, 'en', { sensitivity: 'base' });
+  switch (op.toLowerCase()) {
+    case 'eq':
+      return cmp === 0;
+    case 'ne':
+      return cmp !== 0;
+    case 'gt':
+      return cmp > 0;
+    case 'ge':
+      return cmp >= 0;
+    case 'lt':
+      return cmp < 0;
+    case 'le':
+      return cmp <= 0;
+    case 'like':
+      return wildcard(right).test(l);
+    case 'notlike':
+      return !wildcard(right).test(l);
+    case 'match':
+      try {
+        return new RegExp(right, 'i').test(l);
+      } catch {
+        return null;
+      }
+    case 'notmatch':
+      try {
+        return !new RegExp(right, 'i').test(l);
+      } catch {
+        return null;
+      }
+    default:
+      return null;
+  }
+};
+
+const OPS = ['EQ', 'NE', 'GT', 'GE', 'LT', 'LE', 'Like', 'NotLike', 'Match', 'NotMatch'];
+
+/** `$_.Length -gt 100`, `$_ -like "*.txt"`: the filters lessons use. */
+const parseFilter = (text: string): { prop: string | null; op: string; value: string } | null => {
+  const m = /^\$_(?:\.(\w+))?\s+-(\w+)\s+(?:"([^"]*)"|'([^']*)'|(\S+))$/.exec(text.trim());
+  if (m === null) return null;
+  return { prop: m[1] ?? null, op: m[2] ?? '', value: m[3] ?? m[4] ?? m[5] ?? '' };
+};
+
+const SIMPLE_ONLY = "Hermit only understands simple filters, like { $_.Length -gt 100 } or { $_.Name -like '*.txt' }.";
+
+const whereObject: Cmdlet = {
+  name: 'Where-Object',
+  params: [{ name: 'Property', kind: 'value', position: 0 }, { name: 'Value', kind: 'value', position: 1, type: 'System.Object' }, { name: 'FilterScript', kind: 'value' }, ...OPS.map((o): ParamSpec => ({ name: o, kind: 'switch' }))],
+  run: (b, input, state) => {
+    const first = b.values['FilterScript']?.[0] ?? b.values['Property']?.[0];
+    if (first?.type === 'scriptblock') {
+      const f = parseFilter(first.text);
+      if (f === null) return fail(state, `Where-Object: ${SIMPLE_ONLY}`);
+      const out = input.filter((o) => compare(f.op, f.prop === null ? o : getProperty(o, f.prop), f.value) === true);
+      return ok(state, out);
+    }
+    const prop = str(b, 'Property');
+    if (prop === undefined) return fail(state, 'Where-Object: Cannot process command because of one or more missing mandatory parameters: Property.');
+    const op = OPS.find((o) => has(b, o));
+    const value = str(b, 'Value') ?? '';
+    if (op === undefined) return ok(state, input.filter((o) => { const v = getProperty(o, prop); return v !== null && objectToString(v) !== '' && objectToString(v) !== '0'; }));
+    return ok(state, input.filter((o) => compare(op, getProperty(o, prop), value) === true));
+  },
+};
+
+const forEachObject: Cmdlet = {
+  name: 'ForEach-Object',
+  params: [{ name: 'MemberName', kind: 'value', position: 0 }, { name: 'Process', kind: 'value' }],
+  run: (b, input, state) => {
+    const first = b.values['Process']?.[0] ?? b.values['MemberName']?.[0];
+    let prop: string | null = null;
+    if (first?.type === 'scriptblock') {
+      const m = /^\$_(?:\.(\w+))?$/.exec(first.text.trim());
+      if (m === null) return fail(state, `ForEach-Object: Hermit only understands { $_.Name }-style blocks here.`);
+      prop = m[1] ?? null;
+    } else if (first !== undefined) prop = objectToString(first);
+    if (prop === null) return ok(state, input);
+    const p = prop;
+    return ok(state, input.flatMap((o) => { const v = getProperty(o, p); return v === null ? [] : [v]; }));
+  },
+};
+
+const sortKey = (o: PsObject, props: readonly string[] | undefined): PsObject | null =>
+  props === undefined || props.length === 0 ? (o.type === 'file' ? { type: 'string', value: o.name } : o) : getProperty(o, props[0] ?? '');
+
+const compareObjects = (a: PsObject | null, b: PsObject | null): number => {
+  if (a === null || b === null) return a === null ? (b === null ? 0 : -1) : 1;
+  const an = num(a);
+  const bn = num(b);
+  if (an !== null && bn !== null) return an - bn;
+  return objectToString(a).localeCompare(objectToString(b), 'en', { sensitivity: 'base' });
+};
+
+const sortObject: Cmdlet = {
+  name: 'Sort-Object',
+  params: [{ name: 'Property', kind: 'value', position: 0, type: 'System.Object[]' }, { name: 'Descending', kind: 'switch' }, { name: 'Unique', kind: 'switch' }, { name: 'CaseSensitive', kind: 'switch' }, { name: 'Top', kind: 'value' }, { name: 'Bottom', kind: 'value' }],
+  run: (b, input, state) => {
+    const props = strs(b, 'Property');
+    const sorted = [...input].sort((x, y) => compareObjects(sortKey(x, props), sortKey(y, props)) * (has(b, 'Descending') ? -1 : 1));
+    const out = has(b, 'Unique')
+      ? sorted.filter((o, i) => i === 0 || compareObjects(sortKey(o, props), sortKey(sorted[i - 1] ?? o, props)) !== 0)
+      : sorted;
+    const top = str(b, 'Top');
+    return ok(state, top === undefined ? out : out.slice(0, Number(top)));
+  },
+};
+
+const selectObject: Cmdlet = {
+  name: 'Select-Object',
+  params: [{ name: 'Property', kind: 'value', position: 0, type: 'System.Object[]' }, { name: 'First', kind: 'value', type: 'System.Int32' }, { name: 'Last', kind: 'value', type: 'System.Int32' }, { name: 'Skip', kind: 'value', type: 'System.Int32' }, { name: 'Unique', kind: 'switch' }, { name: 'ExpandProperty', kind: 'value' }],
+  run: (b, input, state) => {
+    let out = [...input];
+    if (has(b, 'Unique')) out = out.filter((o, i) => out.findIndex((x) => objectToString(x) === objectToString(o)) === i);
+    const skip = str(b, 'Skip');
+    if (skip !== undefined) out = out.slice(Number(skip));
+    const first = str(b, 'First');
+    const last = str(b, 'Last');
+    if (first !== undefined) out = out.slice(0, Number(first));
+    if (last !== undefined) out = out.slice(Math.max(0, out.length - Number(last)));
+    const expand = str(b, 'ExpandProperty');
+    if (expand !== undefined) return ok(state, out.flatMap((o) => { const v = getProperty(o, expand); return v === null ? [] : [v]; }));
+    const props = strs(b, 'Property');
+    if (props !== undefined && props.length > 0) {
+      return ok(state, out.map((o): PsObject => ({ type: 'record', props: props.map((p) => [canonicalProp(p), getProperty(o, p)] as const) })));
+    }
+    return ok(state, out);
+  },
+};
+
+const PROP_NAMES = ['Name', 'Length', 'FullName', 'Extension', 'BaseName', 'Id', 'CPU', 'ProcessName', 'Path', 'Line', 'LineNumber', 'Count', 'Lines'];
+const canonicalProp = (p: string): string => PROP_NAMES.find((n) => n.toLowerCase() === p.toLowerCase()) ?? p;
+
+/** Paths in Select-String output are relative to where you are, like PowerShell 7. */
+const relativeTo = (cwd: Path, path: Path): string => {
+  const inside = cwd.every((seg, i) => path[i]?.toLowerCase() === seg.toLowerCase());
+  return inside ? path.slice(cwd.length).join('\\') : show(path);
+};
+
+const selectString: Cmdlet = {
+  name: 'Select-String',
+  params: [{ name: 'Pattern', kind: 'value', position: 0, type: 'System.String[]' }, { name: 'Path', kind: 'value', position: 1, type: 'System.String[]' }, { name: 'SimpleMatch', kind: 'switch' }, { name: 'CaseSensitive', kind: 'switch' }, { name: 'NotMatch', kind: 'switch' }, { name: 'List', kind: 'switch' }, { name: 'Quiet', kind: 'switch' }, { name: 'Raw', kind: 'switch' }],
+  run: (b, input, state) => {
+    const patterns = strs(b, 'Pattern');
+    if (patterns === undefined) return fail(state, 'Select-String: Cannot process command because of one or more missing mandatory parameters: Pattern.');
+    const flags = has(b, 'CaseSensitive') ? '' : 'i';
+    const tests = patterns.map((p) => {
+      if (has(b, 'SimpleMatch')) return (l: string): boolean => (flags === 'i' ? l.toLowerCase().includes(p.toLowerCase()) : l.includes(p));
+      try {
+        const re = new RegExp(p, flags);
+        return (l: string): boolean => re.test(l);
+      } catch {
+        return (l: string): boolean => l.includes(p);
+      }
+    });
+    const hit = (l: string): boolean => tests.some((t) => t(l)) !== has(b, 'NotMatch');
+    const out: PsObject[] = [];
+    const errors: string[] = [];
+    const scan = (label: string, text: string): void => {
+      const lines = text.replace(/\r\n/g, '\n').split('\n');
+      if (lines[lines.length - 1] === '') lines.pop();
+      lines.forEach((line, i) => {
+        if (hit(line)) out.push(has(b, 'Raw') ? { type: 'string', value: line } : { type: 'matchInfo', path: label, lineNumber: i + 1, line });
+      });
+    };
+    const paths = strs(b, 'Path');
+    if (paths !== undefined) {
+      for (const raw of paths) {
+        const expanded = expandPath(raw, state);
+        if (expanded.length === 0) errors.push(`Select-String: Cannot find path '${show(resolve(raw, state))}' because it does not exist.`);
+        for (const path of expanded) {
+          const node = getNode(state.root, path, ci);
+          if (!node.ok) errors.push(`Select-String: Cannot find path '${show(path)}' because it does not exist.`);
+          else if (node.value.kind === 'file') scan(relativeTo(state.cwd, path), node.value.content);
+        }
+      }
+    } else {
+      for (const o of input) {
+        if (o.type === 'file') {
+          const node = getNode(state.root, o.path, ci);
+          if (node.ok && node.value.kind === 'file') scan(relativeTo(state.cwd, o.path), node.value.content);
+        } else scan('', objectToString(o));
+      }
+    }
+    if (has(b, 'Quiet')) return { state, out: [{ type: 'string', value: out.length > 0 ? 'True' : 'False' }], errors };
+    return { state, out, errors };
+  },
+};
+
+const measureObject: Cmdlet = {
+  name: 'Measure-Object',
+  params: [{ name: 'Property', kind: 'value', position: 0 }, { name: 'Line', kind: 'switch' }, { name: 'Word', kind: 'switch' }, { name: 'Character', kind: 'switch' }, { name: 'Sum', kind: 'switch' }, { name: 'Average', kind: 'switch' }],
+  run: (b, input, state) => {
+    if (has(b, 'Line') || has(b, 'Word') || has(b, 'Character')) {
+      const texts = input.map(objectToString);
+      const lines = texts.reduce((n, t) => n + t.split('\n').filter((l) => l !== '').length, 0);
+      const words = texts.reduce((n, t) => n + t.split(/\s+/).filter((w) => w !== '').length, 0);
+      const chars = texts.reduce((n, t) => n + t.length, 0);
+      return ok(state, [{ type: 'measure', mode: 'text', lines: has(b, 'Line') ? lines : 0, words: has(b, 'Word') ? words : 0, chars: has(b, 'Character') ? chars : 0, count: input.length }]);
+    }
+    return ok(state, [{ type: 'measure', mode: 'count', lines: 0, words: 0, chars: 0, count: input.length }]);
+  },
+};
+
+const procObject = (p: { pid: number; name: string; cpu: number }): PsObject => ({ type: 'process', name: p.name, pid: p.pid, cpu: p.cpu });
+
+const getProcess: Cmdlet = {
+  name: 'Get-Process',
+  params: [{ name: 'Name', kind: 'value', position: 0, aliases: ['ProcessName'], type: 'System.String[]' }, { name: 'Id', kind: 'value', type: 'System.Int32[]' }],
+  run: (b, _i, state) => {
+    const ids = strs(b, 'Id');
+    if (ids !== undefined) {
+      const out: PsObject[] = [];
+      const errors: string[] = [];
+      for (const id of ids) {
+        const p = state.processes.find((x) => String(x.pid) === id);
+        if (p === undefined) errors.push(`Get-Process: Cannot find a process with the process identifier ${id}.`);
+        else out.push(procObject(p));
+      }
+      return { state, out, errors };
+    }
+    const names = strs(b, 'Name');
+    if (names === undefined) return ok(state, [...state.processes].sort((x, y) => x.name.localeCompare(y.name, 'en', { sensitivity: 'base' })).map(procObject));
+    const out: PsObject[] = [];
+    const errors: string[] = [];
+    for (const n of names) {
+      const hits = state.processes.filter((p) => wildcard(n).test(p.name));
+      if (hits.length === 0 && !hasGlob(n)) errors.push(`Get-Process: Cannot find a process with the name "${n}". Verify the process name and call the cmdlet again.`);
+      out.push(...hits.map(procObject));
+    }
+    return { state, out, errors };
+  },
+};
+
+const stopProcess: Cmdlet = {
+  name: 'Stop-Process',
+  params: [{ name: 'Id', kind: 'value', position: 0, type: 'System.Int32[]' }, { name: 'Name', kind: 'value', aliases: ['ProcessName'], type: 'System.String[]' }, { name: 'InputObject', kind: 'value' }, P.force, P.passThru, P.whatIf, P.confirm],
+  run: (b, input, state) => {
+    const errors: string[] = [];
+    const targets: number[] = [];
+    for (const id of strs(b, 'Id') ?? []) {
+      if (!/^\d+$/.test(id)) {
+        errors.push(`Stop-Process: Cannot bind parameter 'Id'. Cannot convert value "${id}" to type "System.Int32". Error: "The input string '${id}' was not in a correct format."`);
+        continue;
+      }
+      if (state.processes.some((p) => String(p.pid) === id)) targets.push(Number(id));
+      else errors.push(`Stop-Process: Cannot find a process with the process identifier ${id}.`);
+    }
+    for (const n of strs(b, 'Name') ?? []) {
+      const hits = state.processes.filter((p) => wildcard(n).test(p.name));
+      if (hits.length === 0) errors.push(`Stop-Process: Cannot find a process with the name "${n}". Verify the process name and call the cmdlet again.`);
+      targets.push(...hits.map((p) => p.pid));
+    }
+    for (const o of input) if (o.type === 'process') targets.push(o.pid);
+    if (targets.length === 0 && errors.length === 0) return fail(state, 'Stop-Process: Cannot process command because of one or more missing mandatory parameters: Id.');
+    const allowed = targets.filter((pid) => {
+      const p = state.processes.find((x) => x.pid === pid);
+      if (p !== undefined && pid === 4 && !state.isAdmin) {
+        errors.push(`Stop-Process: Cannot stop process "${p.name} (${pid})" because of the following error: Access is denied.`);
+        return false;
+      }
+      return true;
+    });
+    return { state: { ...state, processes: state.processes.filter((p) => !allowed.includes(p.pid)) }, out: [], errors };
+  },
+};
+
+const POLICIES = ['Restricted', 'RemoteSigned', 'Unrestricted', 'Bypass', 'AllSigned'] as const;
+
+const setExecutionPolicy: Cmdlet = {
+  name: 'Set-ExecutionPolicy',
+  params: [{ name: 'ExecutionPolicy', kind: 'value', position: 0, type: 'Microsoft.PowerShell.ExecutionPolicy' }, { name: 'Scope', kind: 'value', position: 1 }, P.force, P.whatIf, P.confirm],
+  run: (b, _i, state) => {
+    const raw = str(b, 'ExecutionPolicy');
+    if (raw === undefined) return fail(state, 'Set-ExecutionPolicy: Cannot process command because of one or more missing mandatory parameters: ExecutionPolicy.');
+    const policy = POLICIES.find((p) => p.toLowerCase() === raw.toLowerCase());
+    if (policy === undefined) {
+      return fail(state, `Set-ExecutionPolicy: Cannot bind parameter 'ExecutionPolicy'. Cannot convert value "${raw}" to type "Microsoft.PowerShell.ExecutionPolicy". Error: "Unable to match the identifier name ${raw} to a valid enumerator name. Specify one of the following enumerator names and try again:\nUnrestricted, RemoteSigned, AllSigned, Restricted, Default, Bypass, Undefined"`);
+    }
+    const scope = (str(b, 'Scope') ?? 'LocalMachine').toLowerCase();
+    if (!['currentuser', 'localmachine', 'process'].includes(scope)) return fail(state, `Set-ExecutionPolicy: Cannot bind parameter 'Scope'. Cannot convert value "${str(b, 'Scope') ?? ''}" to type "Microsoft.PowerShell.ExecutionPolicyScope".`);
+    if (scope === 'localmachine' && !state.isAdmin) {
+      return fail(
+        state,
+        `Set-ExecutionPolicy: Access to the path 'C:\\Program Files\\PowerShell\\7\\powershell.config.json' is denied.\nTo change the execution policy for the default (LocalMachine) scope, start PowerShell with the "Run as administrator" option. To change the execution policy for the current user, run "Set-ExecutionPolicy -Scope CurrentUser".`,
+      );
+    }
+    return ok({ ...state, executionPolicy: policy });
+  },
+};
+
+const getExecutionPolicy: Cmdlet = {
+  name: 'Get-ExecutionPolicy',
+  params: [{ name: 'Scope', kind: 'value' }, { name: 'List', kind: 'switch' }],
+  run: (_b, _i, state) => ok(state, [{ type: 'string', value: state.executionPolicy ?? 'Restricted' }]),
+};
+
+const KNOWN_APPS = ['pwsh', 'powershell', 'notepad', 'explorer', 'calc', 'mspaint', 'cmd', 'wt'];
+
+const startProcess: Cmdlet = {
+  name: 'Start-Process',
+  params: [{ name: 'FilePath', kind: 'value', position: 0 }, { name: 'ArgumentList', kind: 'value', position: 1, type: 'System.String[]' }, { name: 'Verb', kind: 'value' }, { name: 'Wait', kind: 'switch' }, P.passThru, { name: 'WindowStyle', kind: 'value' }],
+  run: (b, _i, state) => {
+    const file = str(b, 'FilePath');
+    if (file === undefined) return fail(state, 'Start-Process: Cannot process command because of one or more missing mandatory parameters: FilePath.');
+    const base = file.toLowerCase().replace(/\.exe$/, '');
+    const exists = getNode(state.root, resolve(file, state), ci).ok;
+    if (!KNOWN_APPS.includes(base) && !exists) {
+      return fail(state, 'Start-Process: This command cannot be run due to the error: The system cannot find the file specified.');
+    }
+    const runAs = (str(b, 'Verb') ?? '').toLowerCase() === 'runas';
+    if (runAs && (base === 'pwsh' || base === 'powershell' || base === 'wt')) {
+      return ok({ ...state, isAdmin: true }, [{ type: 'string', value: '(Windows asked "Do you want to allow this app to make changes?" and you said Yes. Hermit moved you into the new Administrator window.)' }]);
+    }
+    return ok(state);
+  },
+};
+
 export const cmdlets: readonly Cmdlet[] = [
   getLocation,
   setLocation,
@@ -472,6 +808,17 @@ export const cmdlets: readonly Cmdlet[] = [
   clearHost,
   mkdirFn,
   getHelp,
+  whereObject,
+  forEachObject,
+  sortObject,
+  selectObject,
+  selectString,
+  measureObject,
+  getProcess,
+  stopProcess,
+  setExecutionPolicy,
+  getExecutionPolicy,
+  startProcess,
 ];
 
 export const psAliases: Readonly<Record<string, string>> = {
@@ -509,6 +856,20 @@ export const psAliases: Readonly<Record<string, string>> = {
   ac: 'Add-Content',
   sc: 'Set-Content',
   help: 'Get-Help',
+  where: 'Where-Object',
+  '?': 'Where-Object',
+  foreach: 'ForEach-Object',
+  '%': 'ForEach-Object',
+  sort: 'Sort-Object',
+  select: 'Select-Object',
+  sls: 'Select-String',
+  measure: 'Measure-Object',
+  ps: 'Get-Process',
+  gps: 'Get-Process',
+  kill: 'Stop-Process',
+  spps: 'Stop-Process',
+  start: 'Start-Process',
+  saps: 'Start-Process',
 };
 
 export const findCmdlet = (name: string): Cmdlet | undefined => {

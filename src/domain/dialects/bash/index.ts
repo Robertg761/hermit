@@ -1,11 +1,12 @@
 import type { Dialect } from '../dialect';
 import { bashCommands } from './commands';
+import { posixTools } from './tools';
 import { formatPosixPath, parsePosixPath, tildePath } from './paths';
 import { runLine, type ShellConfig } from './run';
 
 export const bashConfig: ShellConfig = {
   shellName: 'bash',
-  commands: bashCommands,
+  commands: { ...bashCommands, ...posixTools('gnu') },
   aliases: { ll: 'ls -l', la: 'ls -A' },
   notFound: (name) => `bash: ${name}: command not found`,
 };

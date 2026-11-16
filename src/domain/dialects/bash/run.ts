@@ -4,6 +4,8 @@ import { tokenize } from '../../shell/tokenize';
 import { result, type CommandHandler, type PipeInput } from '../dialect';
 import { redirectRead, redirectWrite } from './commands';
 import { expandWord, expandWordDetailed } from './expand';
+import { parsePosixPath } from './paths';
+import { getNode } from '../../vfs/vfs';
 
 export type ShellConfig = {
   /** Name used in shell-level error messages: `bash` or `zsh`. */
@@ -58,21 +60,7 @@ const runSimple = (
   }
 
   if (argv.length === 0) return result(s);
-  const [rawName, ...args] = argv;
-  const name = rawName ?? '';
-  const aliased = cfg.aliases[name];
-  let handler = cfg.commands[name];
-  let finalArgs = args;
-  if (handler === undefined && aliased !== undefined) {
-    const [aName, ...aArgs] = aliased.split(' ');
-    handler = cfg.commands[aName ?? ''];
-    finalArgs = [...aArgs, ...args];
-  }
-  if (handler === undefined) {
-    return result(s, { stderr: cfg.notFound(name), exitCode: 127 });
-  }
-
-  const r = handler(finalArgs, stdin, s, { tty: tty && stdoutTarget === null });
+  const r = dispatch(argv, stdin, s, tty && stdoutTarget === null, cfg);
   let out = r.stdout;
   let err = r.stderr;
   let next = r.state;
@@ -89,6 +77,61 @@ const runSimple = (
     err = '';
   }
   return { ...r, state: next, stdout: out, stderr: err };
+};
+
+/** Find and run a command: builtins, aliases, `sudo`, and scripts like `./build.sh`. */
+const dispatch = (argv: readonly string[], stdin: PipeInput, s: MachineState, tty: boolean, cfg: ShellConfig): CommandResult => {
+  const [rawName, ...args] = argv;
+  const name = rawName ?? '';
+  if (name === 'sudo') {
+    if (args.length === 0) return result(s, { stderr: 'usage: sudo [-u user] command [arg ...]', exitCode: 1 });
+    const r = dispatch(args, stdin, { ...s, isAdmin: true }, tty, cfg);
+    return { ...r, state: { ...r.state, isAdmin: s.isAdmin } };
+  }
+  if (name.includes('/')) return runScript(name, s, cfg, true);
+  if ((name === 'bash' || name === 'sh' || name === 'zsh') && args[0] !== undefined && !args[0].startsWith('-')) return runScript(args[0], s, cfg, false);
+  const aliased = cfg.aliases[name];
+  let handler = cfg.commands[name];
+  let finalArgs = args;
+  if (handler === undefined && aliased !== undefined) {
+    const [aName, ...aArgs] = aliased.split(' ');
+    handler = cfg.commands[aName ?? ''];
+    finalArgs = [...aArgs, ...args];
+  }
+  if (handler === undefined) return result(s, { stderr: cfg.notFound(name), exitCode: 127 });
+  return handler(finalArgs, stdin, s, { tty });
+};
+
+/** Run a script file line by line. `./x` needs the executable bit; `bash x` does not. */
+const runScript = (raw: string, state: MachineState, cfg: ShellConfig, needsExec: boolean): CommandResult => {
+  const path = parsePosixPath(raw, state);
+  const node = path === null ? null : getNode(state.root, path);
+  const zsh = cfg.shellName === 'zsh';
+  if (node === null || !node.ok) {
+    return result(state, { stderr: zsh ? `zsh: no such file or directory: ${raw}` : needsExec ? `bash: ${raw}: No such file or directory` : `bash: ${raw}: No such file or directory`, exitCode: 127 });
+  }
+  if (node.value.kind === 'dir') return result(state, { stderr: zsh ? `zsh: permission denied: ${raw}` : `bash: ${raw}: Is a directory`, exitCode: 126 });
+  if (needsExec && node.value.executable !== true) {
+    return result(state, { stderr: zsh ? `zsh: permission denied: ${raw}` : `bash: ${raw}: Permission denied`, exitCode: 126 });
+  }
+  const body = node.value.content
+    .split('\n')
+    .filter((l) => l.trim() !== '' && !l.trimStart().startsWith('#'))
+    .join('\n');
+  let s = state;
+  let stdout = '';
+  const stderr: string[] = [];
+  const effects: CommandResult['effects'][number][] = [];
+  let exitCode = 0;
+  for (const line of body.split('\n')) {
+    const r = runLine(line, s, cfg);
+    s = r.state;
+    stdout += r.stdout;
+    if (r.stderr) stderr.push(r.stderr);
+    effects.push(...r.effects);
+    exitCode = r.exitCode;
+  }
+  return { state: s, stdout, stderr: stderr.join('\n'), exitCode, effects };
 };
 
 export const runLine = (line: string, state: MachineState, cfg: ShellConfig): CommandResult => {

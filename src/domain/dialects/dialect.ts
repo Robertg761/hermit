@@ -16,7 +16,10 @@ export type PsObject =
     }
   | { readonly type: 'process'; readonly name: string; readonly pid: number; readonly cpu: number }
   | { readonly type: 'matchInfo'; readonly path: string; readonly lineNumber: number; readonly line: string }
-  | { readonly type: 'measure'; readonly lines: number; readonly count: number };
+  | { readonly type: 'measure'; readonly lines: number; readonly words: number; readonly chars: number; readonly count: number; readonly mode: 'text' | 'count' }
+  /** `Select-Object Name, Length` output: a row with only some properties. */
+  | { readonly type: 'record'; readonly props: readonly (readonly [string, PsObject | null])[] }
+  | { readonly type: 'scriptblock'; readonly text: string };
 
 export type PipeInput =
   | { readonly kind: 'none' }

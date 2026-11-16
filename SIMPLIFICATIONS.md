@@ -29,3 +29,15 @@ Where Hermit's simulated shells differ from the real thing. Each line is a delib
 ## Wrong-OS explanations
 
 - Explanations are matched by pattern on lines that failed, so a habit that happens to succeed (like `ls` in PowerShell, which is an alias) stays silent.
+
+## Units 3 to 5 tools
+
+- `grep` uses basic regular expressions translated to JavaScript ones; `-E`, `-P`, context flags (`-A`, `-B`, `-C`) and colour highlighting are not simulated.
+- `find` supports `-name`, `-iname`, `-type f|d` and `-print` only, and lists results sorted by name rather than in directory order.
+- `tail -f` prints the last lines and returns instead of following the file.
+- `ps` shows a fixed-format table with made-up memory and time columns. Only the PID, %CPU and command are meaningful.
+- `kill` accepts signal flags (`-9`, `-KILL`) but every signal simply ends the process.
+- `sudo` never asks for a password.
+- Scripts run line by line through the same simulated shell. Variables, functions, loops and `if` inside scripts are not simulated.
+- PowerShell `Where-Object` and `ForEach-Object` understand the simplified syntax (`Where-Object Name -like "*.txt"`) and one-comparison script blocks (`{ $_.Length -gt 100 }`). Anything longer prints a friendly "not simulated" message.
+- `Start-Process pwsh -Verb RunAs` skips the real UAC dialog and simply makes the session an administrator one.

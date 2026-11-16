@@ -28,6 +28,32 @@ const processTable = (items: readonly Extract<PsObject, { type: 'process' }>[]):
   return '\n' + [...head, ...rows].join('\n') + '\n\n';
 };
 
+const measureText = (m: Extract<PsObject, { type: 'measure' }>): string => {
+  if (m.mode === 'count') {
+    const rows = [['Count', String(m.count)], ['Average', ''], ['Sum', ''], ['Maximum', ''], ['Minimum', ''], ['Property', '']];
+    return '\n' + rows.map(([k, v]) => `${(k ?? '').padEnd(18)}: ${v ?? ''}`.trimEnd()).join('\n') + '\n\n';
+  }
+  return `\nLines Words Characters Property\n----- ----- ---------- --------\n${String(m.lines).padStart(5)} ${(m.words > 0 ? String(m.words) : '').padStart(5)} ${(m.chars > 0 ? String(m.chars) : '').padStart(10)}\n\n`.replace(/ +\n/g, '\n');
+};
+
+const recordTable = (rows: readonly Extract<PsObject, { type: 'record' }>[]): string => {
+  const names = rows[0]?.props.map(([k]) => k) ?? [];
+  const cells = rows.map((r) => r.props.map(([, v]) => (v === null ? '' : objectToString(v))));
+  const numeric = names.map((_, c) => rows.every((r) => { const v = r.props[c]?.[1]; return v === null || v === undefined || v.type === 'number'; }));
+  const widths = names.map((n, c) => Math.max(n.length, ...cells.map((row) => (row[c] ?? '').length)));
+  const fmt = (vals: readonly string[], align: boolean): string =>
+    vals
+      .map((v, c) => {
+        const w = widths[c] ?? 0;
+        const last = c === vals.length - 1;
+        return align && numeric[c] === true ? v.padStart(w) : last ? v : v.padEnd(w);
+      })
+      .join(' ')
+      .trimEnd();
+  const lines = [fmt(names, true), fmt(names.map((n) => '-'.repeat(n.length)), true), ...cells.map((row) => fmt(row, true))];
+  return '\n' + lines.join('\n') + '\n\n';
+};
+
 /** Out-Default: turn the objects left at the end of a pipeline into text. */
 export const formatObjects = (objects: readonly PsObject[]): string => {
   let out = '';
@@ -58,18 +84,28 @@ export const formatObjects = (objects: readonly PsObject[]): string => {
     if (o.type === 'pathInfo') {
       out += `\nPath\n----\n${o.path}\n\n`;
     } else if (o.type === 'matchInfo') {
-      out += `${o.path}:${o.lineNumber}:${o.line}\n`;
+      out += o.path === '' ? `${o.line}\n` : `${o.path}:${o.lineNumber}:${o.line}\n`;
     } else if (o.type === 'measure') {
-      out += `\nLines Words Characters Property\n----- ----- ---------- --------\n${String(o.lines).padStart(5)}\n\n`;
-    } else if (o.type === 'number') {
-      out += `${o.value}\n`;
+      out += measureText(o);
+    } else if (o.type === 'record') {
+      const group: Extract<PsObject, { type: 'record' }>[] = [];
+      while (objects[i]?.type === 'record') {
+        const r = objects[i];
+        if (r?.type === 'record') group.push(r);
+        i++;
+      }
+      out += recordTable(group);
+      continue;
     } else {
-      out += `${o.value}\n`;
+      out += `${objectToString(o)}\n`;
     }
     i++;
   }
   return out;
 };
+
+const m_name = (mode: 'text' | 'count'): string =>
+  mode === 'count' ? 'Microsoft.PowerShell.Commands.GenericMeasureInfo' : 'Microsoft.PowerShell.Commands.TextMeasureInfo';
 
 /** The string form of an object, as used for parameter binding and `>` redirects of simple values. */
 export const objectToString = (o: PsObject): string => {
@@ -85,9 +121,13 @@ export const objectToString = (o: PsObject): string => {
     case 'pathInfo':
       return o.path;
     case 'matchInfo':
-      return `${o.path}:${o.lineNumber}:${o.line}`;
+      return o.path === '' ? o.line : `${o.path}:${o.lineNumber}:${o.line}`;
     case 'measure':
-      return 'Microsoft.PowerShell.Commands.TextMeasureInfo';
+      return m_name(o.mode);
+    case 'record':
+      return '@{' + o.props.map(([k, v]) => `${k}=${v === null ? '' : objectToString(v)}`).join('; ') + '}';
+    case 'scriptblock':
+      return o.text;
   }
 };
 
@@ -119,7 +159,16 @@ export const getProperty = (o: PsObject, prop: string): PsObject | null => {
       if (p === 'path' || p === 'filename') return { type: 'string', value: o.path };
       return null;
     case 'measure':
-      if (p === 'lines' || p === 'count') return { type: 'number', value: o.lines };
+      if (p === 'lines') return { type: 'number', value: o.lines };
+      if (p === 'words') return { type: 'number', value: o.words };
+      if (p === 'characters') return { type: 'number', value: o.chars };
+      if (p === 'count') return { type: 'number', value: o.mode === 'count' ? o.count : o.lines };
+      return null;
+    case 'record': {
+      const hit = o.props.find(([k]) => k.toLowerCase() === p);
+      return hit === undefined ? null : hit[1];
+    }
+    case 'scriptblock':
       return null;
     case 'number':
       return null;

@@ -10,7 +10,9 @@ export type Expr =
   | { readonly kind: 'string'; readonly text: string; readonly expand: boolean }
   | { readonly kind: 'var'; readonly name: string }
   | { readonly kind: 'sub'; readonly body: StatementList; readonly members: readonly string[] }
-  | { readonly kind: 'array'; readonly items: readonly Expr[] };
+  | { readonly kind: 'array'; readonly items: readonly Expr[] }
+  /** `{ ... }`: kept as source text; only Where-Object and ForEach-Object read it. */
+  | { readonly kind: 'block'; readonly text: string };
 
 export type Arg = { readonly kind: 'param'; readonly name: string; readonly value?: Expr } | { readonly kind: 'value'; readonly expr: Expr };
 
@@ -130,7 +132,21 @@ export const parsePowerShell = (line: string): ParseResult => {
       i++;
       return { kind: 'sub', body, members: readMembers() };
     }
-    if (c === '{') throw new ParseError('SCRIPTBLOCK');
+    if (c === '{') {
+      let depth = 0;
+      const start = i;
+      for (; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '{') depth++;
+        if (ch === '}') {
+          depth--;
+          if (depth === 0) break;
+        }
+      }
+      if (depth !== 0) throw new ParseError("Missing closing '}' in statement block or type definition.");
+      i++;
+      return { kind: 'block', text: line.slice(start + 1, i - 1).trim() };
+    }
     return { kind: 'bare', text: readBare() };
   };
 
@@ -190,7 +206,6 @@ export const parsePowerShell = (line: string): ParseResult => {
       skip();
       const c = peek();
       if (c === undefined || c === '|' || c === ';' || c === ')' || c === '}' || at('&&') || at('||') || at('>') || at('2>')) break;
-      if (c === '{') throw new ParseError('SCRIPTBLOCK');
       if (c === '-' && /[A-Za-z?]/.test(peek(1) ?? '')) {
         i++;
         let name = '';

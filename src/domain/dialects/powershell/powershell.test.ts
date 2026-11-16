@@ -122,7 +122,8 @@ describe('PowerShell dialect', () => {
     expect(run('$env:GREETING', r.state).stdout).toBe('hello\n');
   });
 
-  it('script blocks get a friendly message', () => {
-    expect(run('ls | Where-Object { $_.Length -gt 1 }').stderr).toContain("Hermit doesn't simulate");
+  it('complex script blocks get a friendly message', () => {
+    expect(run('ls | ForEach-Object { $_.Name.ToUpper() }').stderr).toContain('Hermit only understands');
+    expect(run('$x = 1').stderr).toContain("Hermit doesn't simulate");
   });
 });

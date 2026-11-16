@@ -61,10 +61,20 @@ const skeleton = (os: OS): DirNode => {
   }
 };
 
-const DEFAULT_PROCESSES: readonly Process[] = [
-  { pid: 1, name: 'init', cpu: 0 },
-  { pid: 312, name: 'hermitd', cpu: 0.3 },
-];
+const DEFAULT_PROCESSES: Readonly<Record<OS, readonly Process[]>> = {
+  linux: [
+    { pid: 1, name: 'systemd', cpu: 0 },
+    { pid: 312, name: 'hermitd', cpu: 0.3 },
+  ],
+  mac: [
+    { pid: 1, name: 'launchd', cpu: 0 },
+    { pid: 312, name: 'hermitd', cpu: 0.3 },
+  ],
+  windows: [
+    { pid: 4, name: 'System', cpu: 0 },
+    { pid: 312, name: 'hermitd', cpu: 0.3 },
+  ],
+};
 
 const defaultEnv = (os: OS, home: Path): Record<string, string> => {
   switch (os) {
@@ -112,7 +122,7 @@ export const buildMachine = (os: OS, seed: SeedState = {}): MachineState => {
     cwd: [...home, ...split(seed.cwd ?? '')],
     home,
     env: { ...defaultEnv(os, home), ...(seed.env ?? {}) },
-    processes: [...DEFAULT_PROCESSES, ...(seed.processes ?? [])],
+    processes: [...DEFAULT_PROCESSES[os], ...(seed.processes ?? [])],
     installed: [],
     isAdmin: false,
     ...(os === 'windows' ? { executionPolicy: 'Restricted' as const } : {}),
