@@ -25,7 +25,86 @@ const errText = (e: VfsError): string => {
   }
 };
 
+export type Flavor = 'gnu' | 'bsd';
+
+/** Error wording differs between GNU coreutils (Linux) and BSD userland (macOS). */
+type Messages = {
+  readonly shell: string;
+  readonly cd: (what: 'missing' | 'notdir', target: string) => string;
+  readonly lsMissing: (t: string) => string;
+  readonly lsMissingExit: number;
+  readonly mkdir: (d: string, err: string) => string;
+  readonly touch: (f: string, err: string) => string;
+  readonly rm: (f: string, e: VfsError) => string;
+  readonly rmRoot: string;
+  readonly cpStat: (s: string) => string;
+  readonly cpDir: (s: string) => string;
+  readonly mvStat: (s: string, d: string) => string;
+  readonly owner: string;
+  readonly colour: boolean;
+  readonly missingOperand: (cmd: string) => string;
+};
+
+const MESSAGES: Record<Flavor, Messages> = {
+  gnu: {
+    shell: 'bash',
+    cd: (what, t) => `bash: cd: ${t}: ${what === 'missing' ? 'No such file or directory' : 'Not a directory'}`,
+    lsMissing: (t) => `ls: cannot access '${t}': No such file or directory`,
+    lsMissingExit: 2,
+    mkdir: (d, err) => `mkdir: cannot create directory '${d}': ${err}`,
+    touch: (f, err) => `touch: cannot touch '${f}': ${err}`,
+    rm: (f, e) => `rm: cannot remove '${f}': ${errText(e)}`,
+    rmRoot: "rm: it is dangerous to operate recursively on '/'\nrm: use --no-preserve-root to override this failsafe",
+    cpStat: (s) => `cp: cannot stat '${s}': No such file or directory`,
+    cpDir: (s) => `cp: -r not specified; omitting directory '${s}'`,
+    mvStat: (s) => `mv: cannot stat '${s}': No such file or directory`,
+    owner: 'you you  ',
+    colour: true,
+    missingOperand: (cmd) => `${cmd}: missing operand\nTry '${cmd} --help' for more information.`,
+  },
+  bsd: {
+    shell: 'zsh',
+    cd: (what, t) => `cd: ${what === 'missing' ? 'no such file or directory' : 'not a directory'}: ${t}`,
+    lsMissing: (t) => `ls: ${t}: No such file or directory`,
+    lsMissingExit: 1,
+    mkdir: (d, err) => `mkdir: ${d}: ${err}`,
+    touch: (f, err) => `touch: ${f}: ${err}`,
+    rm: (f, e) => `rm: ${f}: ${e.code === 'EISDIR' ? 'is a directory' : errText(e)}`,
+    rmRoot: 'rm: "/" may not be removed',
+    cpStat: (s) => `cp: ${s}: No such file or directory`,
+    cpDir: (s) => `cp: ${s} is a directory (not copied).`,
+    mvStat: (s, d) => `mv: rename ${s} to ${d}: No such file or directory`,
+    owner: 'you  staff',
+    colour: false,
+    missingOperand: (cmd) => `usage: ${cmd} [options] file ...`,
+  },
+};
+
 const resolve = (raw: string, state: MachineState): Path => parsePosixPath(raw, state) ?? state.cwd;
+
+/** Write `content` to a file for `>` / `>>` redirects. */
+export const redirectWrite = (
+  state: MachineState,
+  target: string,
+  content: string,
+  append: boolean,
+  shell = 'bash',
+): { state: MachineState; error?: string } => {
+  const path = resolve(target, state);
+  const r = writeFile(state.root, path, content, { append });
+  if (!r.ok) return { state, error: `${shell}: ${target}: ${errText(r.error)}` };
+  return { state: { ...state, root: r.value } };
+};
+
+export const redirectRead = (state: MachineState, target: string, shell = 'bash'): { text: string } | { error: string } => {
+  const r = readFile(state.root, resolve(target, state));
+  if (!r.ok) return { error: `${shell}: ${target}: ${errText(r.error)}` };
+  return { text: r.value };
+};
+
+
+export const posixCommands = (flavor: Flavor): Readonly<Record<string, CommandHandler>> => {
+  const M = MESSAGES[flavor];
 
 type Body = (
   parsed: ParsedArgs,
@@ -37,7 +116,7 @@ type Body = (
 const withFlags =
   (cmd: string, spec: FlagSpec, body: Body): CommandHandler =>
   (args, input, state, ctx) => {
-    const parsed = parseFlags(cmd, args, spec);
+    const parsed = parseFlags(cmd, args, spec, flavor);
     if (!parsed.ok) return result(state, { stderr: parsed.error, exitCode: 2 });
     return body(parsed.args, state, input, ctx);
   };
@@ -48,19 +127,19 @@ const pwd: CommandHandler = (_args, _input, state) => result(state, { stdout: fo
 
 const cd: CommandHandler = (args, _input, state) => {
   const operands = args.filter((a) => a !== '--');
-  if (operands.length > 1) return result(state, { stderr: 'bash: cd: too many arguments' });
+  if (operands.length > 1) return result(state, { stderr: `${M.shell}: cd: too many arguments` });
   const target = operands[0];
   if (target === undefined || target === '~') return result({ ...state, cwd: state.home });
   if (target === '-') {
     const old = state.env['OLDPWD'];
-    if (old === undefined) return result(state, { stderr: 'bash: cd: OLDPWD not set' });
+    if (old === undefined) return result(state, { stderr: `${M.shell}: cd: OLDPWD not set` });
     const p = resolve(old, state);
     return result({ ...state, cwd: p, env: { ...state.env, OLDPWD: formatPosixPath(state.cwd) } }, { stdout: old + '\n' });
   }
   const path = resolve(target, state);
   const node = getNode(state.root, path);
-  if (!node.ok) return result(state, { stderr: `bash: cd: ${target}: No such file or directory` });
-  if (node.value.kind !== 'dir') return result(state, { stderr: `bash: cd: ${target}: Not a directory` });
+  if (!node.ok) return result(state, { stderr: M.cd('missing', target) });
+  if (node.value.kind !== 'dir') return result(state, { stderr: M.cd('notdir', target) });
   return result({ ...state, cwd: path, env: { ...state.env, OLDPWD: formatPosixPath(state.cwd), PWD: formatPosixPath(path) } });
 };
 
@@ -68,13 +147,13 @@ const cd: CommandHandler = (args, _input, state) => {
 
 const MONTH = 'Nov 16';
 
-const longLine = (name: string, node: VNode, tty: boolean): string => {
+const longLine = (name: string, node: VNode, tty: boolean, M: Messages): string => {
   const isDir = node.kind === 'dir';
   const exec = node.kind === 'file' && node.executable === true;
   const mode = isDir ? 'drwxr-xr-x' : exec ? '-rwxr-xr-x' : '-rw-r--r--';
   const links = isDir ? String(2 + Object.values(node.children).filter((c) => c.kind === 'dir').length) : '1';
   const size = isDir ? 4096 : node.content.length;
-  return `${mode} ${links.padStart(2)} you you ${String(size).padStart(5)} ${MONTH} 18:00 ${colour(name, node, tty)}`;
+  return `${mode} ${links.padStart(2)} ${M.owner} ${String(size).padStart(5)} ${MONTH} 18:00 ${colour(name, node, tty && M.colour)}`;
 };
 
 const colour = (name: string, node: VNode, tty: boolean): string => {
@@ -103,9 +182,9 @@ const ls = withFlags('ls', { short: 'alAhrRS1dt', long: { all: 'a', 'almost-all'
     if (list.length === 0) return '';
     if (long) {
       const total = list.reduce((n, [, node]) => n + Math.ceil(sizeOf(node) / 1024) * 4, 0);
-      return `total ${total}\n` + list.map(([n, node]) => longLine(n, node, ctx.tty)).join('\n') + '\n';
+      return `total ${total}\n` + list.map(([n, node]) => longLine(n, node, ctx.tty, M)).join('\n') + '\n';
     }
-    const names = list.map(([n, node]) => colour(n, node, ctx.tty));
+    const names = list.map(([n, node]) => colour(n, node, ctx.tty && M.colour));
     return names.join(onePer ? '\n' : '  ') + '\n';
   };
 
@@ -115,8 +194,8 @@ const ls = withFlags('ls', { short: 'alAhrRS1dt', long: { all: 'a', 'almost-all'
     const path = resolve(t, state);
     const node = getNode(state.root, path);
     if (!node.ok) {
-      errs.push(`ls: cannot access '${t}': No such file or directory`);
-      exitCode = 2;
+      errs.push(M.lsMissing(t));
+      exitCode = M.lsMissingExit;
       continue;
     }
     if (node.value.kind === 'dir' && !flags.has('d')) dirTargets.push([t, node.value, path]);
@@ -169,12 +248,12 @@ const echo: CommandHandler = (args, _input, state) => {
 };
 
 const mkdirCmd = withFlags('mkdir', { short: 'pv', long: { parents: 'p', verbose: 'v' } }, ({ flags, operands }, state) => {
-  if (operands.length === 0) return result(state, { stderr: "mkdir: missing operand\nTry 'mkdir --help' for more information." });
+  if (operands.length === 0) return result(state, { stderr: M.missingOperand('mkdir') });
   let s = state;
   const errs: string[] = [];
   for (const d of operands) {
     const r = mkdir(s.root, resolve(d, s), { parents: flags.has('p') });
-    if (!r.ok) errs.push(`mkdir: cannot create directory '${d}': ${errText(r.error)}`);
+    if (!r.ok) errs.push(M.mkdir(d, errText(r.error)));
     else s = { ...s, root: r.value };
   }
   return result(s, { stderr: errs.join('\n') });
@@ -182,12 +261,12 @@ const mkdirCmd = withFlags('mkdir', { short: 'pv', long: { parents: 'p', verbose
 
 const touchCmd: CommandHandler = (args, _input, state) => {
   const operands = args.filter((a) => !a.startsWith('-'));
-  if (operands.length === 0) return result(state, { stderr: "touch: missing file operand\nTry 'touch --help' for more information." });
+  if (operands.length === 0) return result(state, { stderr: M.missingOperand('touch') });
   let s = state;
   const errs: string[] = [];
   for (const f of operands) {
     const r = touch(s.root, resolve(f, s));
-    if (!r.ok) errs.push(`touch: cannot touch '${f}': ${errText(r.error)}`);
+    if (!r.ok) errs.push(M.touch(f, errText(r.error)));
     else s = { ...s, root: r.value };
   }
   return result(s, { stderr: errs.join('\n') });
@@ -198,14 +277,14 @@ const rm = withFlags('rm', { short: 'rRfiv', long: { recursive: 'r', force: 'f',
   const force = flags.has('f');
   if (operands.length === 0) {
     if (force) return result(state);
-    return result(state, { stderr: "rm: missing operand\nTry 'rm --help' for more information." });
+    return result(state, { stderr: M.missingOperand('rm') });
   }
   let s = state;
   const errs: string[] = [];
   for (const f of operands) {
     const path = resolve(f, s);
     if (path.length === 0 || f === '/') {
-      errs.push(`rm: it is dangerous to operate recursively on '/'\nrm: use --no-preserve-root to override this failsafe`);
+      errs.push(M.rmRoot);
       continue;
     }
     if (f === '.' || f === '..' || f.endsWith('/.') || f.endsWith('/..')) {
@@ -215,7 +294,7 @@ const rm = withFlags('rm', { short: 'rRfiv', long: { recursive: 'r', force: 'f',
     const r = remove(s.root, path, { recursive });
     if (!r.ok) {
       if (r.error.code === 'ENOENT' && force) continue;
-      errs.push(`rm: cannot remove '${f}': ${errText(r.error)}`);
+      errs.push(M.rm(f, r.error));
     } else s = { ...s, root: r.value };
   }
   return result(s, { stderr: errs.join('\n') });
@@ -254,11 +333,11 @@ const cp = withFlags('cp', { short: 'rRvfi', long: { recursive: 'r', verbose: 'v
     const srcPath = resolve(src, s);
     const node = getNode(s.root, srcPath);
     if (!node.ok) {
-      errs.push(`cp: cannot stat '${src}': No such file or directory`);
+      errs.push(M.cpStat(src));
       continue;
     }
     if (node.value.kind === 'dir' && !recursive) {
-      errs.push(`cp: -r not specified; omitting directory '${src}'`);
+      errs.push(M.cpDir(src));
       continue;
     }
     const r = copy(s.root, srcPath, destPath, { recursive });
@@ -288,7 +367,7 @@ const mv = withFlags('mv', { short: 'vfin', long: { verbose: 'v', force: 'f' } }
   for (const src of sources) {
     const srcPath = resolve(src, s);
     if (!getNode(s.root, srcPath).ok) {
-      errs.push(`mv: cannot stat '${src}': No such file or directory`);
+      errs.push(M.mvStat(src, dest));
       continue;
     }
     const r = move(s.root, srcPath, destPath);
@@ -307,26 +386,7 @@ const whoami: CommandHandler = (_args, _input, state) => result(state, { stdout:
 const exit: CommandHandler = (_args, _input, state) =>
   result(state, { stdout: "You can't leave. You have a streak.\n", effects: [{ kind: 'easterEgg', id: 'exit' }] });
 
-/** Write `content` to a file for `>` / `>>` redirects. */
-export const redirectWrite = (
-  state: MachineState,
-  target: string,
-  content: string,
-  append: boolean,
-): { state: MachineState; error?: string } => {
-  const path = resolve(target, state);
-  const r = writeFile(state.root, path, content, { append });
-  if (!r.ok) return { state, error: `bash: ${target}: ${errText(r.error)}` };
-  return { state: { ...state, root: r.value } };
-};
-
-export const redirectRead = (state: MachineState, target: string): { text: string } | { error: string } => {
-  const r = readFile(state.root, resolve(target, state));
-  if (!r.ok) return { error: `bash: ${target}: ${errText(r.error)}` };
-  return { text: r.value };
-};
-
-export const bashCommands: Readonly<Record<string, CommandHandler>> = {
+  return {
   pwd,
   cd,
   ls,
@@ -342,3 +402,6 @@ export const bashCommands: Readonly<Record<string, CommandHandler>> = {
   whoami,
   exit,
 };
+};
+
+export const bashCommands = posixCommands('gnu');

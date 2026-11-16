@@ -10,3 +10,9 @@ Where Hermit's simulated shells differ from the real thing. Each line is a delib
 - `cd -` works; `CDPATH` and `pushd`/`popd` are not simulated.
 - Background jobs (`&`), subshells, command substitution (`$(...)`) and here-docs are not simulated.
 - `mkdir`, `touch`, `rm`, `cp` and `mv` print GNU coreutils wording; BSD (macOS) wording arrives with the zsh dialect.
+
+## zsh (macOS)
+
+- Shares the Bash parser, so zsh-only syntax (extended globs, `**/`, parameter flags) is not simulated. Unmatched globs do error like zsh's default `nomatch`.
+- BSD tools print BSD error wording, but `ls -l` uses the same fixed date and sizes as on Linux.
+- `open` does nothing visible, `caffeinate` returns immediately, and `sw_vers` reports a made-up version.

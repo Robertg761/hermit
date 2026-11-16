@@ -3,7 +3,7 @@ import { parse, type SimpleCommand } from '../../shell/parse';
 import { tokenize } from '../../shell/tokenize';
 import { result, type CommandHandler, type PipeInput } from '../dialect';
 import { redirectRead, redirectWrite } from './commands';
-import { expandWord } from './expand';
+import { expandWord, expandWordDetailed } from './expand';
 
 export type ShellConfig = {
   /** Name used in shell-level error messages: `bash` or `zsh`. */
@@ -11,6 +11,8 @@ export type ShellConfig = {
   readonly commands: Readonly<Record<string, CommandHandler>>;
   readonly aliases: Readonly<Record<string, string>>;
   readonly notFound: (name: string) => string;
+  /** zsh errors on globs that match nothing; bash passes them through literally. */
+  readonly nomatchError?: boolean;
 };
 
 type Acc = { state: MachineState; stdout: string; stderr: string[]; effects: Effect[]; exitCode: number };
@@ -23,7 +25,14 @@ const runSimple = (
   lastExit: number,
   cfg: ShellConfig,
 ): CommandResult => {
-  const argv = cmd.words.flatMap((w) => expandWord(w, state, lastExit));
+  const argv: string[] = [];
+  for (const w of cmd.words) {
+    const e = expandWordDetailed(w, state, lastExit);
+    if (e.nomatch !== undefined && cfg.nomatchError) {
+      return result(state, { stderr: `${cfg.shellName}: no matches found: ${e.nomatch}`, exitCode: 1 });
+    }
+    argv.push(...e.words);
+  }
   let s = state;
   let stdin = input;
   let stdoutTarget: { path: string; append: boolean } | null = null;
@@ -33,8 +42,8 @@ const runSimple = (
     const [target] = expandWord(r.target, s, lastExit);
     if (target === undefined) return result(s, { stderr: `${cfg.shellName}: ambiguous redirect`, exitCode: 1 });
     if (r.op === '<') {
-      const read = redirectRead(s, target);
-      if ('error' in read) return result(s, { stderr: read.error.replace(/^bash/, cfg.shellName), exitCode: 1 });
+      const read = redirectRead(s, target, cfg.shellName);
+      if ('error' in read) return result(s, { stderr: read.error, exitCode: 1 });
       stdin = { kind: 'text', text: read.text };
     } else if (r.op === '2>' || r.op === '2>>') {
       stderrTarget = { path: target, append: r.op === '2>>' };
@@ -42,8 +51,8 @@ const runSimple = (
       stdoutTarget = { path: target, append: r.op === '>>' };
       both = r.op === '&>';
       // The shell creates (or, for `>`, truncates) the file before the command runs.
-      const created = redirectWrite(s, target, '', stdoutTarget.append);
-      if (created.error) return result(s, { stderr: created.error.replace(/^bash/, cfg.shellName), exitCode: 1 });
+      const created = redirectWrite(s, target, '', stdoutTarget.append, cfg.shellName);
+      if (created.error) return result(s, { stderr: created.error, exitCode: 1 });
       s = created.state;
     }
   }

@@ -12,7 +12,15 @@ const expandVars = (text: string, state: MachineState, lastExit: number): string
   });
 
 /** Expand one word: tilde, variables, then (for unquoted glob characters) pathname expansion. */
-export const expandWord = (parts: readonly WordPart[], state: MachineState, lastExit = 0): readonly string[] => {
+export const expandWord = (parts: readonly WordPart[], state: MachineState, lastExit = 0): readonly string[] =>
+  expandWordDetailed(parts, state, lastExit).words;
+
+/** Like expandWord, but also reports an unmatched glob (zsh treats that as an error). */
+export const expandWordDetailed = (
+  parts: readonly WordPart[],
+  state: MachineState,
+  lastExit = 0,
+): { readonly words: readonly string[]; readonly nomatch?: string } => {
   let text = '';
   // pattern keeps glob chars only where they were unquoted
   let pattern = '';
@@ -37,10 +45,10 @@ export const expandWord = (parts: readonly WordPart[], state: MachineState, last
     }
   });
   const quotedEmpty = text === '' && parts.some((p) => p.quote !== 'none');
-  if (text === '' && !quotedEmpty) return [];
-  if (!globbable) return [text];
+  if (text === '' && !quotedEmpty) return { words: [] };
+  if (!globbable) return { words: [text] };
   const matches = expandGlob(pattern, state);
-  return matches.length > 0 ? matches : [text];
+  return matches.length > 0 ? { words: matches } : { words: [text], nomatch: text };
 };
 
 /** Pathname expansion, segment by segment. Hidden files only match patterns starting with `.`. */

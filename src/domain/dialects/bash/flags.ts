@@ -17,7 +17,7 @@ export type FlagSpec = {
 export type FlagResult = { readonly ok: true; readonly args: ParsedArgs } | { readonly ok: false; readonly error: string };
 
 /** GNU-style option parsing: clustered short flags, `--long`, `--` ends options. */
-export const parseFlags = (cmd: string, argv: readonly string[], spec: FlagSpec): FlagResult => {
+export const parseFlags = (cmd: string, argv: readonly string[], spec: FlagSpec, flavor: 'gnu' | 'bsd' = 'gnu'): FlagResult => {
   const flags = new Set<string>();
   const values: Record<string, string> = {};
   const operands: string[] = [];
@@ -38,7 +38,10 @@ export const parseFlags = (cmd: string, argv: readonly string[], spec: FlagSpec)
       const name = a.slice(2).split('=')[0] ?? '';
       const mapped = spec.long?.[name];
       if (mapped === undefined) {
-        return { ok: false, error: `${cmd}: unrecognized option '${a}'\nTry '${cmd} --help' for more information.` };
+        return {
+          ok: false,
+          error: flavor === 'gnu' ? `${cmd}: unrecognized option '${a}'\nTry '${cmd} --help' for more information.` : `${cmd}: unrecognized option \`${a}'`,
+        };
       }
       flags.add(mapped);
       continue;
@@ -60,7 +63,13 @@ export const parseFlags = (cmd: string, argv: readonly string[], spec: FlagSpec)
         break;
       }
       if (!short.includes(f)) {
-        return { ok: false, error: `${cmd}: invalid option -- '${f}'\nTry '${cmd} --help' for more information.` };
+        return {
+          ok: false,
+          error:
+            flavor === 'gnu'
+              ? `${cmd}: invalid option -- '${f}'\nTry '${cmd} --help' for more information.`
+              : `${cmd}: invalid option -- ${f}\nusage: ${cmd} [-${spec.short ?? ''}] [file ...]`,
+        };
       }
       flags.add(f);
     }
