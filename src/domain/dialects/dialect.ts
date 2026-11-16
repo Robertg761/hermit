@@ -4,7 +4,16 @@ import type { Path } from '../vfs/vfs';
 /** Typed object flowing through a PowerShell pipeline. */
 export type PsObject =
   | { readonly type: 'string'; readonly value: string }
-  | { readonly type: 'file'; readonly name: string; readonly path: Path; readonly isDir: boolean; readonly length: number }
+  | { readonly type: 'number'; readonly value: number }
+  | { readonly type: 'pathInfo'; readonly path: string }
+  | {
+      readonly type: 'file';
+      readonly name: string;
+      readonly path: Path;
+      readonly isDir: boolean;
+      readonly length: number;
+      readonly hidden: boolean;
+    }
   | { readonly type: 'process'; readonly name: string; readonly pid: number; readonly cpu: number }
   | { readonly type: 'matchInfo'; readonly path: string; readonly lineNumber: number; readonly line: string }
   | { readonly type: 'measure'; readonly lines: number; readonly count: number };
@@ -52,6 +61,6 @@ export const result = (
 
 export const inputText = (input: PipeInput): string | null => {
   if (input.kind === 'text') return input.text;
-  if (input.kind === 'objects') return input.items.map((o) => ('value' in o ? o.value : 'name' in o ? o.name : '')).join('\n') + '\n';
+  if (input.kind === 'objects') return input.items.map((o) => ('value' in o ? String(o.value) : 'name' in o ? o.name : '')).join('\n') + '\n';
   return null;
 };
