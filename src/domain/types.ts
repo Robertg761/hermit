@@ -44,4 +44,6 @@ export type CommandResult = {
   readonly effects: readonly Effect[];
   /** Set when the command was recognised as coming from another OS's shell. */
   readonly wrongOs?: string;
+  /** A plain-English reading of the error, for beginners. */
+  readonly decoded?: string;
 };
