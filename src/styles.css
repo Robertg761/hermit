@@ -496,6 +496,7 @@ code {
 
   .workbench {
     grid-template-columns: 1fr;
+    align-content: start;
   }
 
   .terminal-frame {
@@ -503,8 +504,44 @@ code {
     height: 50vh;
   }
 
+  /* Shellby sits beside the bubble, right under the question, like a chat. */
+  .buddy {
+    order: -1;
+    display: grid;
+    grid-template-columns: 64px 1fr;
+    align-items: center;
+    column-gap: 12px;
+    row-gap: 8px;
+    width: 100%;
+  }
+
   .buddy .shellby {
-    display: none;
+    grid-column: 1;
+    grid-row: 1;
+    width: 64px;
+    height: auto;
+  }
+
+  .buddy .speech {
+    grid-column: 2;
+    grid-row: 1;
+    padding: 10px 12px;
+    font-size: 0.95rem;
+  }
+
+  .buddy .speech::after {
+    bottom: auto;
+    top: 50%;
+    left: -9px;
+    margin-left: 0;
+    margin-top: -10px;
+    border: 10px solid transparent;
+    border-right-color: var(--sand);
+    border-left: 0;
+  }
+
+  .buddy > :not(.speech, .shellby) {
+    grid-column: 1 / -1;
   }
 
   .result-sheet {

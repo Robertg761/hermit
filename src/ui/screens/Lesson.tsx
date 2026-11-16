@@ -53,13 +53,13 @@ const TYPE_BADGE: Record<ChallengeType, string> = {
 };
 
 const INTRO_LINE: Partial<Record<ChallengeType, string>> = {
-  learn: 'Something new. Read it, it is short. I checked.',
-  typeAlong: 'Copy the grey text. No pressure, no hearts on the line.',
-  pick: 'Just pick one. Trust your gut. Or your shell.',
-  match: 'Tap a command, then what it means.',
-  build: 'Tap the tiles in order. Then run it for real.',
-  fill: 'One piece is missing. Find it.',
-  predict: 'No typing this time. Just guess. Wisely.',
+  learn: "New trick! It's short. I read it twice to make sure.",
+  typeAlong: 'Copy the grey text. Practice round, your hearts are safe.',
+  pick: 'Pick one. Trust your gut. Or your shell.',
+  match: "Tap a command, then what it does. I'll wait.",
+  build: 'Tap the tiles in order, then run it for real.',
+  fill: 'One piece is missing. You know the one.',
+  predict: 'No typing. What will it print? Guess wisely.',
   fix: 'Someone typed this wrong. Not me. Fix it.',
 };
 
