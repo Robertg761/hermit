@@ -1,5 +1,6 @@
 import type { SeedState } from '../../domain/machine';
 import { same, type Lesson, type PerOs, type Unit } from '../../domain/lessons/types';
+import { predict } from '../builders';
 
 /** The learner's home folder in Unit 1: a small, lived-in burrow. */
 const burrow = (os: 'posix' | 'windows'): SeedState => ({
@@ -22,7 +23,7 @@ const seedAt = (cwd?: string): PerOs<SeedState> => {
 
 export const unit1Lesson1: Lesson = {
   id: 'u1-l1',
-  title: 'Where am I?',
+  title: 'Look around',
   challenges: [
     {
       id: 'u1-l1-c1',
@@ -116,8 +117,33 @@ export const unit1Lesson1: Lesson = {
         windows: 'Get-ChildItem returns objects with Mode, LastWriteTime, Length and Name, so details come for free.',
       },
     },
-    {
+    predict({
       id: 'u1-l1-c5',
+      prompt: same('Shellby opened a fresh terminal and typed this. What does it print?'),
+      seed: seedAt(),
+      command: { linux: ['pwd'], mac: ['pwd'], windows: ['Get-Location'] },
+      options: {
+        linux: ['/home/you', '/', '/Users/you'],
+        mac: ['/', '/Users/you', '/home/you'],
+        windows: ['C:\\', 'C:\\Windows', 'C:\\Users\\you'],
+      },
+      answer: { linux: 0, mac: 1, windows: 2 },
+      hints: same(['A new terminal always starts in your home folder.']),
+      explain: {
+        linux: 'New terminals open in your home folder, which is /home/you on Linux.',
+        mac: 'New terminals open in your home folder, which is /Users/you on macOS.',
+        windows: 'New PowerShell windows open in your profile folder, C:\\Users\\you.',
+      },
+    }),
+  ],
+};
+
+export const unit1Lesson2: Lesson = {
+  id: 'u1-l2',
+  title: 'Move around',
+  challenges: [
+    {
+      id: 'u1-l2-c1',
       type: 'do',
       prompt: same('Step inside the projects folder.'),
       seed: seedAt(),
@@ -139,7 +165,21 @@ export const unit1Lesson1: Lesson = {
       },
     },
     {
-      id: 'u1-l1-c6',
+      id: 'u1-l2-c2',
+      type: 'do',
+      prompt: same('You are in projects/website. Go up exactly one folder, to projects.'),
+      seed: seedAt('projects/website'),
+      goal: same({ kind: 'cwdIs', path: 'projects' }),
+      solutions: { linux: [['cd ..']], mac: [['cd ..']], windows: [['cd ..'], ['Set-Location ..']] },
+      hints: {
+        linux: ['Two dots mean "the folder above this one".', 'Type `cd ..`.'],
+        mac: ['Two dots mean "the folder above this one".', 'Type `cd ..`.'],
+        windows: ['Two dots mean "the folder above this one", on Windows too.', 'Type `cd ..`.'],
+      },
+      explain: same('`..` always means the parent folder, so `cd ..` climbs one level.'),
+    },
+    {
+      id: 'u1-l2-c3',
       type: 'do',
       prompt: same('You wandered deep into projects/website. Head back to your home folder.'),
       seed: seedAt('projects/website'),
@@ -160,11 +200,53 @@ export const unit1Lesson1: Lesson = {
         windows: '`cd ..` goes up one level and `cd ~` jumps home. PowerShell accepts both `\\` and `/` in paths.',
       },
     },
+    predict({
+      id: 'u1-l2-c4',
+      prompt: same('Starting at home, Shellby types these lines. What does the last one print?'),
+      seed: seedAt(),
+      command: {
+        linux: ['cd projects/game', 'cd ..', 'pwd'],
+        mac: ['cd projects/game', 'cd ..', 'pwd'],
+        windows: ['cd projects\\game', 'cd ..', 'Get-Location'],
+      },
+      options: {
+        linux: ['/home/you/projects/game', '/home/you/projects', '/home/you'],
+        mac: ['/Users/you/projects', '/Users/you', '/Users/you/projects/game'],
+        windows: ['C:\\Users\\you', 'C:\\Users\\you\\projects\\game', 'C:\\Users\\you\\projects'],
+      },
+      answer: { linux: 1, mac: 0, windows: 2 },
+      hints: same(['`..` undoes one step of the path.']),
+      explain: same('You went down two levels, then up one, so you end up in projects.'),
+    }),
+    {
+      id: 'u1-l2-c5',
+      type: 'fix',
+      prompt: same('Shellby tried to jump into the game folder but fumbled the spelling. Fix the command and run it.'),
+      seed: seedAt(),
+      prefill: { linux: 'cd projects/gaem', mac: 'cd projects/gaem', windows: 'cd projects\\gaem' },
+      goal: same({ kind: 'cwdIs', path: 'projects/game' }),
+      solutions: {
+        linux: [['cd projects/game']],
+        mac: [['cd projects/game']],
+        windows: [['cd projects\\game'], ['Set-Location projects/game']],
+      },
+      hints: {
+        linux: ['Read the error: the folder name is misspelled.', 'Type `cd projects/game`.'],
+        mac: ['Read the error: the folder name is misspelled.', 'Type `cd projects/game`.'],
+        windows: ['Read the error: the folder name is misspelled.', 'Type `cd projects\\game`.'],
+      },
+      explain: {
+        linux: 'You can `cd` through several folders at once with a path like `projects/game`.',
+        mac: 'You can `cd` through several folders at once with a path like `projects/game`.',
+        windows: 'You can `cd` through several folders at once. PowerShell accepts `projects\\game` or `projects/game`.',
+      },
+    },
   ],
 };
 
 export const unit1: Unit = {
   id: 'u1',
   title: 'Getting around',
-  lessons: [unit1Lesson1],
+  blurb: 'Find out where you are and move between folders.',
+  lessons: [unit1Lesson1, unit1Lesson2],
 };

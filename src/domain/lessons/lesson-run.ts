@@ -55,3 +55,19 @@ export const nextChallenge = (run: LessonRun): LessonRun | null => {
 };
 
 export const markHintUsed = (run: LessonRun): LessonRun => ({ ...run, attempt: { ...run.attempt, usedHint: true } });
+
+/** Answer a Predict challenge. A wrong pick costs a heart. */
+export const answerPredict = (run: LessonRun, choice: number): { run: LessonRun; correct: boolean; event: 'solved' | 'wrong' | 'outOfHearts'; xp: number } => {
+  const answer = run.attempt.challenge.answer?.[run.os];
+  const correct = choice === answer;
+  if (correct) {
+    const attempt = { ...run.attempt, solved: true };
+    const xp = challengeXp(attempt);
+    return { run: { ...run, attempt, xp: run.xp + xp, clean: run.clean + (xp > 10 ? 1 : 0) }, correct, event: 'solved', xp };
+  }
+  const hearts = run.hearts - 1;
+  if (hearts <= 0) return { run: startLesson(run.lesson, run.os, run.restarts + 1), correct, event: 'outOfHearts', xp: 0 };
+  // A wrong pick still moves on (like a quiz), but without XP for this challenge.
+  const attempt = { ...run.attempt, solved: true, lostHeart: true, failures: run.attempt.failures + 1 };
+  return { run: { ...run, hearts, attempt }, correct, event: 'wrong', xp: 0 };
+};

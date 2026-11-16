@@ -29,7 +29,12 @@ export type Challenge = {
   readonly protectedPaths?: readonly string[];
   readonly hints: PerOs<readonly string[]>;
   readonly explain: PerOs<string>;
-  readonly options?: readonly string[];
+  /** Predict only: the command(s) shown. The learner predicts the output of the last line. */
+  readonly command?: PerOs<readonly string[]>;
+  /** Predict only: answer options. The golden test checks `options[answer]` against the real output. */
+  readonly options?: PerOs<readonly string[]>;
+  readonly answer?: PerOs<number>;
+  /** Fix only: the broken command pre-typed at the prompt. */
   readonly prefill?: PerOs<string>;
 };
 
@@ -42,6 +47,8 @@ export type Lesson = {
 export type Unit = {
   readonly id: string;
   readonly title: string;
+  /** One line under the unit banner. */
+  readonly blurb: string;
   readonly lessons: readonly Lesson[];
 };
 

@@ -10,6 +10,7 @@ import { units } from './units';
  * listed solutions, and must not already be solved by its seed.
  */
 const OSES: readonly OS[] = ['linux', 'mac', 'windows'];
+const ANSI = new RegExp(String.fromCharCode(27) + '\\[[0-9;]*m', 'g');
 
 for (const unit of units) {
   for (const lesson of unit.lessons) {
@@ -35,6 +36,28 @@ for (const unit of units) {
                 solved = r.outcome === 'solved';
               }
               expect(solved, `solution ${JSON.stringify(solution)} does not meet the goal`).toBe(true);
+            }
+            if (challenge.type === 'predict') {
+              // The marked answer must be a real line of output, and no distractor may be.
+              let state = start.machine;
+              let stdout = '';
+              for (const line of challenge.command?.[os] ?? []) {
+                const r = dialect.run(line, state);
+                state = r.state;
+                stdout = r.stdout;
+              }
+              const lines = stdout.replace(ANSI, '').split('\n').map((l) => l.trim());
+              const options = challenge.options?.[os] ?? [];
+              const answer = challenge.answer?.[os] ?? -1;
+              options.forEach((opt, i) => {
+                expect(lines.includes(opt), `option "${opt}" vs output ${JSON.stringify(lines)}`).toBe(i === answer);
+              });
+            }
+            if (challenge.type === 'fix') {
+              const prefill = challenge.prefill?.[os];
+              expect(prefill, 'fix challenges need a prefill').toBeDefined();
+              const r = step(start, prefill ?? '', dialect);
+              expect(r.outcome, `prefill "${prefill}" should not already solve it`).not.toBe('solved');
             }
           });
         }
