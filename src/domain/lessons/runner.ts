@@ -3,7 +3,7 @@ import { buildMachine, seedPath } from '../machine';
 import type { CommandResult, MachineState, OS } from '../types';
 import { caseInsensitive, caseSensitive, getNode } from '../vfs/vfs';
 import { goalMet } from './goal';
-import type { Challenge } from './types';
+import type { Challenge, ChallengeType } from './types';
 
 export const HEARTS_PER_LESSON = 3;
 
@@ -16,6 +16,8 @@ export type ChallengeAttempt = {
   readonly lostHeart: boolean;
   readonly usedHint: boolean;
   readonly solved: boolean;
+  /** Fix only: the untouched prefill has been run once (free, so the learner can read the error). */
+  readonly freeRunUsed: boolean;
 };
 
 export type StepOutcome =
@@ -42,6 +44,7 @@ export const startChallenge = (challenge: Challenge, os: OS): ChallengeAttempt =
   lostHeart: false,
   usedHint: false,
   solved: false,
+  freeRunUsed: false,
 });
 
 const fileSnapshot = (state: MachineState, os: OS, rel: string): string | null => {
@@ -84,13 +87,19 @@ export const useHint = (attempt: ChallengeAttempt): ChallengeAttempt => ({ ...at
 /** Hints unlock after 2 failures; the last hint (which may give the answer) after 3. */
 export const availableHints = (attempt: ChallengeAttempt): readonly string[] => {
   const hints = attempt.challenge.hints[attempt.os];
-  if (attempt.failures < 2) return [];
-  if (attempt.failures < 3) return hints.slice(0, Math.max(1, hints.length - 1));
+  const failures = attempt.failures + (attempt.challenge.openHint === true ? 2 : 0);
+  if (failures < 2) return [];
+  if (failures < 3) return hints.slice(0, Math.max(1, hints.length - 1));
   return hints;
 };
 
 export const XP_PER_CHALLENGE = 10;
 export const XP_CLEAN_BONUS = 5;
 
+/** Types that are about meeting something new, not testing it. */
+export const isIntro = (type: ChallengeType): boolean => type === 'learn' || type === 'typeAlong';
+
 export const challengeXp = (attempt: ChallengeAttempt): number =>
-  XP_PER_CHALLENGE + (attempt.usedHint || attempt.lostHeart ? 0 : XP_CLEAN_BONUS);
+  attempt.challenge.type === 'learn'
+    ? 0
+    : XP_PER_CHALLENGE + (attempt.usedHint || attempt.lostHeart ? 0 : XP_CLEAN_BONUS);

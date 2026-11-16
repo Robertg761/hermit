@@ -23,6 +23,8 @@ type Props = {
   readonly banner?: string;
   readonly prefill?: string;
   readonly disabled?: boolean;
+  /** Type along: grey text shown after what the learner has typed so far. */
+  readonly ghost?: string;
 };
 
 const toCrlf = (s: string): string => s.replace(/\r?\n/g, '\r\n');
@@ -32,7 +34,7 @@ const DIM = `${ESC}[2m`;
 const RED = `${ESC}[31m`;
 const RESET = `${ESC}[0m`;
 
-export function Terminal({ os, sessionKey, prompt, onLine, banner, prefill, disabled }: Props) {
+export function Terminal({ os, sessionKey, prompt, onLine, banner, prefill, disabled, ghost }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<XTerm | null>(null);
   const editorRef = useRef<EditorState>(emptyEditor());
@@ -40,16 +42,24 @@ export function Terminal({ os, sessionKey, prompt, onLine, banner, prefill, disa
   const onLineRef = useRef(onLine);
   const promptRef = useRef(prompt);
   const disabledRef = useRef(disabled ?? false);
+  const ghostRef = useRef(ghost);
   useEffect(() => {
     onLineRef.current = onLine;
     promptRef.current = prompt;
     disabledRef.current = disabled ?? false;
+    ghostRef.current = disabled ? undefined : ghost;
   });
 
   const redraw = (term: XTerm): void => {
     const p = promptRef.current();
     const e = editorRef.current;
     term.write(`\r${ESC}[K${p}${e.buffer}`);
+    const g = ghostRef.current;
+    if (g !== undefined && e.cursor === e.buffer.length && g.length > e.buffer.length && g.startsWith(e.buffer)) {
+      const rest = g.slice(e.buffer.length);
+      term.write(`${DIM}${rest}${RESET}${ESC}[${rest.length}D`);
+      return;
+    }
     const back = e.buffer.length - e.cursor;
     if (back > 0) term.write(`${ESC}[${back}D`);
   };
@@ -144,7 +154,10 @@ export function Terminal({ os, sessionKey, prompt, onLine, banner, prefill, disa
     const term = termRef.current;
     if (term === null) return;
     term.options.cursorBlink = !disabled;
+    ghostRef.current = disabled ? undefined : ghost;
+    redraw(term);
     if (!disabled) term.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [disabled]);
 
   return <div className="terminal-host" ref={hostRef} onClick={() => termRef.current?.focus()} />;

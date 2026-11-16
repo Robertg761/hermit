@@ -16,7 +16,34 @@ export type Goal =
   | { readonly kind: 'installed'; readonly pkg: string }
   | { readonly kind: 'all'; readonly goals: readonly Goal[] };
 
-export type ChallengeType = 'do' | 'predict' | 'fix' | 'translate';
+/** A command, flag or symbol the learner can be taught, like `pwd`, `ls-a` or `cd-up`. */
+export type SkillId = string;
+
+export type ChallengeType =
+  /** A short card that introduces a new skill. Never costs hearts. */
+  | 'learn'
+  /** The command is shown as ghost text; the learner types over it. Never costs hearts. */
+  | 'typeAlong'
+  /** Choose the right command or meaning. */
+  | 'pick'
+  /** Tap pairs of commands and meanings. Wrong taps only shake. */
+  | 'match'
+  /** Tap tokens to assemble a command, which then runs for real. */
+  | 'build'
+  /** A command with one gap, filled from tiles, which then runs for real. */
+  | 'fill'
+  | 'do'
+  | 'predict'
+  | 'fix'
+  | 'translate';
+
+export type LearnCard = {
+  readonly title: string;
+  /** One or two sentences. */
+  readonly body: string;
+  /** A command run on the seed so the card shows real output. */
+  readonly example?: string;
+};
 
 export type Challenge = {
   readonly id: string;
@@ -36,6 +63,24 @@ export type Challenge = {
   readonly answer?: PerOs<number>;
   /** Fix only: the broken command pre-typed at the prompt. */
   readonly prefill?: PerOs<string>;
+  /** Skills a Learn card introduces. */
+  readonly teaches?: readonly SkillId[];
+  /** Skills needed to answer. The golden test checks each was taught by an earlier Learn card. */
+  readonly uses: readonly SkillId[];
+  /** Practice of an earlier lesson's skill. Shows a "Review" tag. */
+  readonly review?: boolean;
+  /** Learn only. */
+  readonly card?: PerOs<LearnCard>;
+  /** Pick only: why each option is right or wrong, shown after answering. */
+  readonly optionReasons?: PerOs<readonly string[]>;
+  /** Match only: [command, meaning] pairs. */
+  readonly pairs?: PerOs<readonly (readonly [string, string])[]>;
+  /** Build only: the token bank, including distractors. */
+  readonly tokens?: PerOs<readonly string[]>;
+  /** Fill only: the command with one `___` gap, filled from `options`. */
+  readonly template?: PerOs<string>;
+  /** Show the first hint from the start (the first Do for a new skill). */
+  readonly openHint?: boolean;
 };
 
 export type Lesson = {

@@ -1,12 +1,16 @@
 import { useMemo, useRef, useState } from 'react';
 import type { Dialect } from '../../domain/dialects/dialect';
 import {
-  answerPredict,
+  answerChoice,
+  answerLine,
+  completeCard,
   isLastChallenge,
+  lessonProgress,
   markHintUsed,
   nextChallenge,
   startLesson,
   submitLine,
+  type AnswerResult,
   type LessonRun,
 } from '../../domain/lessons/lesson-run';
 import { HEARTS_PER_LESSON, availableHints } from '../../domain/lessons/runner';
@@ -17,6 +21,7 @@ import { Shellby, type ShellbyMood } from '../mascot/Shellby';
 import { SHELL_LABEL } from '../os';
 import { sounds } from '../sound';
 import { Terminal, type TerminalReply } from '../terminal/Terminal';
+import { BuildCard, ChoiceCard, FillCard, LearnCardView, MatchCard, outputLines, type ScreenLine } from './cards';
 import { Markdownish } from './Markdownish';
 
 export type LessonResult = { readonly xp: number; readonly clean: number; readonly total: number; readonly lessonId: string };
@@ -30,15 +35,32 @@ type Props = {
 };
 
 type Speech = { readonly mood: ShellbyMood; readonly text: string };
-type Feedback = { readonly kind: 'correct' | 'wrong'; readonly xp: number; readonly correctAnswer?: string } | null;
+type Feedback = { readonly kind: 'correct' | 'wrong'; readonly xp: number; readonly correctAnswer?: string; readonly reason?: string } | null;
 
 const say = (event: ShellbyEvent, mood: ShellbyMood): Speech => ({ mood, text: pickLine(event) });
 
 const TYPE_BADGE: Record<ChallengeType, string> = {
+  learn: 'New command',
+  typeAlong: 'Type along',
+  pick: 'Pick one',
+  match: 'Match',
+  build: 'Build it',
+  fill: 'Fill the gap',
   do: 'Your turn',
   predict: 'What prints?',
   fix: 'Fix it',
   translate: 'Translate',
+};
+
+const INTRO_LINE: Partial<Record<ChallengeType, string>> = {
+  learn: 'Something new. Read it, it is short. I checked.',
+  typeAlong: 'Copy the grey text. No pressure, no hearts on the line.',
+  pick: 'Just pick one. Trust your gut. Or your shell.',
+  match: 'Tap a command, then what it means.',
+  build: 'Tap the tiles in order. Then run it for real.',
+  fill: 'One piece is missing. Find it.',
+  predict: 'No typing this time. Just guess. Wisely.',
+  fix: 'Someone typed this wrong. Not me. Fix it.',
 };
 
 export function Lesson({ lesson, os, dialect, onExit, onComplete }: Props) {
@@ -50,6 +72,7 @@ export function Lesson({ lesson, os, dialect, onExit, onComplete }: Props) {
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [combo, setCombo] = useState(0);
   const [heartPop, setHeartPop] = useState(0);
+  const [ranLines, setRanLines] = useState<readonly ScreenLine[] | null>(null);
 
   const update = (next: LessonRun): void => {
     runRef.current = next;
@@ -58,7 +81,7 @@ export function Lesson({ lesson, os, dialect, onExit, onComplete }: Props) {
 
   const challenge = run.attempt.challenge;
   const hints = availableHints(run.attempt);
-  const progress = (run.index + (feedback !== null ? 1 : 0)) / lesson.challenges.length;
+  const progress = lessonProgress(run, feedback !== null);
 
   const celebrate = (xp: number): void => {
     const clean = xp > 10;
@@ -84,7 +107,8 @@ export function Lesson({ lesson, os, dialect, onExit, onComplete }: Props) {
   };
 
   const handleLine = (line: string): TerminalReply => {
-    const { run: next, event } = submitLine(runRef.current, line, dialect);
+    const before = runRef.current;
+    const { run: next, event } = submitLine(before, line, dialect);
     update(next);
     const r = event.step.result;
     const clear = r.effects.some((e) => e.kind === 'clear');
@@ -93,6 +117,8 @@ export function Lesson({ lesson, os, dialect, onExit, onComplete }: Props) {
         window.speechSynthesis.speak(new SpeechSynthesisUtterance(effect.text));
       }
     }
+    const explainer = r.wrongOs ?? r.decoded;
+    const note = explainer === undefined ? undefined : `Shellby: ${explainer.replace(/`/g, '')}`;
     if (event.kind === 'outOfHearts') {
       loseHeart();
       outOfHearts();
@@ -102,26 +128,32 @@ export function Lesson({ lesson, os, dialect, onExit, onComplete }: Props) {
       celebrate(event.xp);
       return { stdout: r.stdout, stderr: r.stderr, clear };
     }
+    const lost = next.hearts < before.hearts;
     if (event.step.outcome === 'protected') {
-      loseHeart();
+      if (lost) loseHeart();
       setSpeech(say('protected', 'sad'));
       return { stdout: r.stdout, stderr: r.stderr, note: '(Shellby put the files back. Try again.)' };
     }
+    const ghost = challenge.type === 'typeAlong' ? challenge.solutions[os][0]?.[0] : undefined;
+    if (ghost !== undefined && line.trim() !== '' && line.trim() !== ghost) {
+      setSpeech({ mood: 'idle', text: `Close. Type the grey text exactly: \`${ghost}\`` });
+      return { stdout: r.stdout, stderr: r.stderr, clear, ...(note ? { note } : {}) };
+    }
     if (event.step.outcome === 'error') {
-      loseHeart();
-      if (r.wrongOs !== undefined) {
-        setSpeech({ mood: 'smug', text: r.wrongOs });
-        return { stdout: r.stdout, stderr: r.stderr, clear, note: `Shellby: ${r.wrongOs.replace(/`/g, '')}` };
+      if (lost) loseHeart();
+      if (explainer !== undefined) {
+        setSpeech({ mood: lost ? 'sad' : 'idle', text: explainer });
+        return { stdout: r.stdout, stderr: r.stderr, clear, ...(note ? { note } : {}) };
       }
-      setSpeech(say('error', 'sad'));
+      setSpeech(lost ? say('error', 'sad') : { mood: 'idle', text: 'See? Nothing broke. Now read what it said, and fix it.' });
     } else if (line.trim().length > 0) {
       setSpeech((s) => (s.mood === 'sad' ? { mood: 'idle', text: s.text } : s));
     }
     return { stdout: r.stdout, stderr: r.stderr, clear };
   };
 
-  const handlePredict = (choice: number): void => {
-    const r = answerPredict(runRef.current, choice);
+  /** Shared ending for Pick, Predict, Build and Fill. */
+  const settle = (r: AnswerResult, correctAnswer: string, reason?: string): void => {
     if (r.event === 'outOfHearts') {
       loseHeart();
       update(r.run);
@@ -131,29 +163,60 @@ export function Lesson({ lesson, os, dialect, onExit, onComplete }: Props) {
     update(r.run);
     if (r.correct) {
       celebrate(r.xp);
+      if (reason !== undefined) setFeedback({ kind: 'correct', xp: r.xp, reason });
     } else {
       loseHeart();
-      const options = challenge.options?.[os] ?? [];
-      const answer = challenge.answer?.[os] ?? 0;
-      setFeedback({ kind: 'wrong', xp: 0, correctAnswer: options[answer] ?? '' });
+      setFeedback({ kind: 'wrong', xp: 0, correctAnswer, ...(reason !== undefined ? { reason } : {}) });
       setSpeech(say('error', 'sad'));
     }
+  };
+
+  const handleChoice = (choice: number): void => {
+    const options = challenge.options?.[os] ?? [];
+    const answer = challenge.answer?.[os] ?? 0;
+    const reasons = challenge.optionReasons?.[os];
+    settle(answerChoice(runRef.current, choice), options[answer] ?? '', choice === answer ? undefined : reasons?.[choice]);
+  };
+
+  const handleAssembled = (line: string): void => {
+    const r = answerLine(runRef.current, line, dialect);
+    const res = r.step.result;
+    const explainer = res.wrongOs ?? res.decoded;
+    setRanLines([
+      { kind: 'cmd', prompt: dialect.prompt(runRef.current.attempt.machine), text: line },
+      ...outputLines(res.stdout, res.stderr, res.exitCode),
+      ...(explainer !== undefined && !r.correct ? [{ kind: 'note' as const, text: `Shellby: ${explainer.replace(/`/g, '')}` }] : []),
+    ]);
+    settle(r, challenge.solutions[os][0]?.[0] ?? '');
+  };
+
+  const handleCard = (mistakes = 0): void => {
+    const r = completeCard(runRef.current, mistakes);
+    update(r.run);
+    if (challenge.type === 'learn') {
+      goNext();
+      return;
+    }
+    celebrate(r.xp);
   };
 
   const goNext = (): void => {
     const current = runRef.current;
     const next = nextChallenge(current);
     setFeedback(null);
+    setRanLines(null);
     if (next === null) {
-      onComplete({ xp: current.xp, clean: current.clean, total: lesson.challenges.length, lessonId: lesson.id });
+      const total = current.queue.filter((c) => c.type !== 'learn').length;
+      onComplete({ xp: current.xp, clean: current.clean, total, lessonId: lesson.id });
       return;
     }
     update(next);
     setHintsShown(0);
-    const nextType = next.attempt.challenge.type;
+    const nextChallengeData = next.attempt.challenge;
+    const retry = next.index >= lesson.challenges.length;
     setSpeech({
-      mood: 'idle',
-      text: nextType === 'predict' ? 'No typing this time. Just guess. Wisely.' : nextType === 'fix' ? 'Someone typed this wrong. Not me. Fix it.' : pickLine('welcome'),
+      mood: retry ? 'smug' : 'idle',
+      text: retry ? 'This one again. You know it now.' : (INTRO_LINE[nextChallengeData.type] ?? pickLine('welcome')),
     });
   };
 
@@ -167,12 +230,95 @@ export function Lesson({ lesson, os, dialect, onExit, onComplete }: Props) {
     setRestartNotice(false);
     setCombo(0);
     update(startLesson(lesson, os, runRef.current.restarts));
+    setRanLines(null);
     setSpeech(say('welcome', 'idle'));
   };
 
   const sessionKey = `${run.restarts}:${run.index}`;
   const banner = useMemo(() => `Hermit ${SHELL_LABEL[os]} simulator. Nothing here touches a real computer.`, [os]);
-  const isTerminal = challenge.type !== 'predict';
+  const isTerminal = challenge.type === 'do' || challenge.type === 'fix' || challenge.type === 'typeAlong' || challenge.type === 'translate';
+  const locked = feedback !== null || restartNotice;
+
+  const learnExample = useMemo((): readonly ScreenLine[] | null => {
+    const example = challenge.card?.[os].example;
+    if (challenge.type !== 'learn' || example === undefined) return null;
+    const machine = run.attempt.machine;
+    const r = dialect.run(example, machine);
+    return [
+      { kind: 'cmd', prompt: dialect.prompt(machine), text: example },
+      ...outputLines(r.stdout, r.stderr, r.exitCode),
+      { kind: 'cmd', prompt: dialect.prompt(r.state), text: '' },
+    ];
+  }, [challenge, os, dialect, run.attempt.machine]);
+
+  const renderWorkbench = (): React.ReactNode => {
+    if (isTerminal) {
+      return (
+        <div className="terminal-frame">
+          <div className="terminal-titlebar">
+            <span className="dot" />
+            <span className="dot" />
+            <span className="dot" />
+            <span className="terminal-title">{SHELL_LABEL[os]}</span>
+          </div>
+          <Terminal
+            os={os}
+            sessionKey={sessionKey}
+            prompt={() => dialect.prompt(runRef.current.attempt.machine)}
+            onLine={handleLine}
+            banner={banner}
+            prefill={challenge.prefill?.[os]}
+            ghost={challenge.type === 'typeAlong' ? challenge.solutions[os][0]?.[0] : undefined}
+            disabled={locked}
+          />
+        </div>
+      );
+    }
+    switch (challenge.type) {
+      case 'learn':
+        return <LearnCardView key={sessionKey} os={os} body={challenge.card?.[os].body ?? ''} example={learnExample} onContinue={() => handleCard()} />;
+      case 'match':
+        return <MatchCard key={sessionKey} id={challenge.id} pairs={challenge.pairs?.[os] ?? []} onDone={(m) => handleCard(m)} />;
+      case 'build':
+        return (
+          <BuildCard
+            key={sessionKey}
+            os={os}
+            prompt={dialect.prompt(run.attempt.machine)}
+            tokens={challenge.tokens?.[os] ?? []}
+            locked={locked}
+            result={ranLines}
+            onCheck={handleAssembled}
+          />
+        );
+      case 'fill':
+        return (
+          <FillCard
+            key={sessionKey}
+            os={os}
+            prompt={dialect.prompt(run.attempt.machine)}
+            template={challenge.template?.[os] ?? ''}
+            options={challenge.options?.[os] ?? []}
+            locked={locked}
+            result={ranLines}
+            onCheck={handleAssembled}
+          />
+        );
+      case 'predict':
+        return (
+          <ChoiceCard
+            key={sessionKey}
+            os={os}
+            screen={(challenge.command?.[os] ?? []).map((text) => ({ kind: 'cmd', prompt: dialect.prompt(run.attempt.machine), text }))}
+            options={challenge.options?.[os] ?? []}
+            locked={locked}
+            onCheck={handleChoice}
+          />
+        );
+      default:
+        return <ChoiceCard key={sessionKey} os={os} options={challenge.options?.[os] ?? []} locked={locked} onCheck={handleChoice} />;
+    }
+  };
 
   return (
     <main className={`lesson os-theme-${os}`}>
@@ -195,7 +341,9 @@ export function Lesson({ lesson, os, dialect, onExit, onComplete }: Props) {
       </header>
 
       <section className="challenge">
-        <span className={`type-badge type-${challenge.type}`}>{TYPE_BADGE[challenge.type]}</span>
+        <span className={`type-badge type-${challenge.type}`}>{challenge.type === 'learn' && (challenge.teaches ?? []).some((t) => t === 'prompt' || t === 'errors' || t === 'quotes' || t === 'recursive') ? 'New idea' : TYPE_BADGE[challenge.type]}</span>
+        {challenge.review === true && <span className="type-badge type-review">Review</span>}
+        {run.index >= lesson.challenges.length && <span className="type-badge type-review">Second try</span>}
         <h2 className="challenge-prompt">
           <Markdownish text={challenge.prompt[os]} />
         </h2>
@@ -205,35 +353,7 @@ export function Lesson({ lesson, os, dialect, onExit, onComplete }: Props) {
       </section>
 
       <section className="workbench">
-        {isTerminal ? (
-          <div className="terminal-frame">
-            <div className="terminal-titlebar">
-              <span className="dot" />
-              <span className="dot" />
-              <span className="dot" />
-              <span className="terminal-title">{SHELL_LABEL[os]}</span>
-            </div>
-            <Terminal
-              os={os}
-              sessionKey={sessionKey}
-              prompt={() => dialect.prompt(runRef.current.attempt.machine)}
-              onLine={handleLine}
-              banner={banner}
-              prefill={challenge.prefill?.[os]}
-              disabled={feedback !== null || restartNotice}
-            />
-          </div>
-        ) : (
-          <PredictCard
-            key={sessionKey}
-            os={os}
-            prompt={dialect.prompt(run.attempt.machine)}
-            lines={challenge.command?.[os] ?? []}
-            options={challenge.options?.[os] ?? []}
-            locked={feedback !== null}
-            onCheck={handlePredict}
-          />
-        )}
+        {renderWorkbench()}
 
         <aside className="buddy" aria-live="polite">
           <div className="speech">
@@ -268,14 +388,21 @@ export function Lesson({ lesson, os, dialect, onExit, onComplete }: Props) {
                 {feedback.kind === 'correct' ? (feedback.xp > 10 ? 'Flawless!' : 'Nice!') : 'Not quite.'}
                 {feedback.kind === 'correct' && <span className="xp-pop">+{feedback.xp} XP</span>}
               </p>
+              {feedback.reason !== undefined && (
+                <p className="result-reason">
+                  <Markdownish text={feedback.reason} />
+                </p>
+              )}
               {feedback.correctAnswer !== undefined && (
                 <p className="result-answer">
                   Correct answer: <code>{feedback.correctAnswer}</code>
                 </p>
               )}
-              <p className="result-explain">
-                <Markdownish text={challenge.explain[os]} />
-              </p>
+              {!(feedback.kind === 'wrong' && (challenge.type === 'build' || challenge.type === 'fill')) && (
+                <p className="result-explain">
+                  <Markdownish text={challenge.explain[os]} />
+                </p>
+              )}
             </div>
           </div>
           <ContinueButton onClick={goNext} label={isLastChallenge(run) ? 'Finish lesson' : 'Continue'} tone={feedback.kind} />
@@ -293,81 +420,6 @@ export function Lesson({ lesson, os, dialect, onExit, onComplete }: Props) {
         </div>
       )}
     </main>
-  );
-}
-
-function PredictCard({
-  os,
-  prompt,
-  lines,
-  options,
-  locked,
-  onCheck,
-}: {
-  os: OS;
-  prompt: string;
-  lines: readonly string[];
-  options: readonly string[];
-  locked: boolean;
-  onCheck: (choice: number) => void;
-}) {
-  const [choice, setChoice] = useState<number | null>(null);
-  const [checked, setChecked] = useState<number | null>(null);
-  const pick = (i: number): void => {
-    if (locked) return;
-    setChoice(i);
-    sounds.select();
-  };
-  const check = (): void => {
-    if (choice === null || locked) return;
-    setChecked(choice);
-    onCheck(choice);
-  };
-  return (
-    <div
-      className="predict"
-      tabIndex={-1}
-      ref={(el) => el?.focus()}
-      onKeyDown={(e) => {
-        const n = Number(e.key);
-        if (n >= 1 && n <= options.length) pick(n - 1);
-        if (e.key === 'Enter' && !locked) {
-          e.preventDefault();
-          check();
-        }
-      }}
-    >
-      <div className={`predict-screen os-screen-${os}`}>
-        {lines.map((l, i) => (
-          <div key={i} className="predict-line">
-            <span className="predict-prompt">{prompt}</span>
-            {l}
-          </div>
-        ))}
-        <div className="predict-unknown">???</div>
-      </div>
-      <div className="options" role="radiogroup">
-        {options.map((opt, i) => (
-          <button
-            key={opt}
-            type="button"
-            role="radio"
-            aria-checked={choice === i}
-            className={`option${choice === i ? ' is-selected' : ''}${checked === i ? ' is-checked' : ''}`}
-            onClick={() => pick(i)}
-            disabled={locked}
-          >
-            <span className="option-key">{i + 1}</span>
-            <code className="option-text">{opt}</code>
-          </button>
-        ))}
-      </div>
-      {!locked && (
-        <button type="button" className="primary-button check-button" disabled={choice === null} onClick={check}>
-          Check
-        </button>
-      )}
-    </div>
   );
 }
 

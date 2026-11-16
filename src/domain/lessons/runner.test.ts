@@ -2,13 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { bash } from '../dialects/bash';
 import { buildMachine } from '../machine';
 import { goalMet } from './goal';
-import { submitLine, startLesson, nextChallenge } from './lesson-run';
+import { answerChoice, answerLine, completeCard, isLastChallenge, nextChallenge, startLesson, submitLine } from './lesson-run';
 import { availableHints, challengeXp, startChallenge, step } from './runner';
 import { same, type Challenge, type Lesson } from './types';
 
 const challenge: Challenge = {
   id: 't1',
   type: 'do',
+  uses: [],
   prompt: same('Delete junk.txt but keep keep.txt.'),
   seed: same({ files: { 'junk.txt': 'x', 'keep.txt': 'precious' } }),
   goal: same({ kind: 'notExists', path: 'junk.txt' }),
@@ -100,5 +101,66 @@ describe('lesson run', () => {
     run = submitLine(n, 'rm junk.txt', bash).run;
     expect(run.xp).toBe(30);
     expect(nextChallenge(run)).toBeNull();
+  });
+
+  it('re-queues a missed challenge once at the end', () => {
+    let run = startLesson(lesson, 'linux');
+    run = submitLine(run, 'bad', bash).run;
+    run = submitLine(run, 'rm junk.txt', bash).run;
+    expect(isLastChallenge(run)).toBe(false);
+    const n1 = nextChallenge(run);
+    expect(n1?.queue.length).toBe(3);
+    if (n1 === null) return;
+    const n2 = nextChallenge(submitLine(n1, 'rm junk.txt', bash).run);
+    expect(n2?.attempt.challenge.id).toBe('t1');
+    if (n2 === null) return;
+    const done = submitLine(n2, 'bad', bash).run;
+    // Missed again on the retry: it does not come back a second time.
+    expect(isLastChallenge(done)).toBe(true);
+  });
+});
+
+describe('new challenge types', () => {
+  const typeAlong: Challenge = { ...challenge, id: 'ta', type: 'typeAlong' };
+  const fix: Challenge = { ...challenge, id: 'fx', type: 'fix', prefill: same('rm junk') };
+  const pickC: Challenge = { ...challenge, id: 'pk', type: 'pick', options: same(['a', 'b', 'c']), answer: same(2) };
+  const buildC: Challenge = { ...challenge, id: 'bd', type: 'build', tokens: same(['rm', 'junk.txt']) };
+  const learnC: Challenge = { ...challenge, id: 'ln', type: 'learn', teaches: ['rm'] };
+  const one = (c: Challenge): Lesson => ({ id: 'l', title: 'T', challenges: [c] });
+
+  it('type along never costs hearts', () => {
+    const run = submitLine(startLesson(one(typeAlong), 'linux'), 'nonsense', bash).run;
+    expect(run.hearts).toBe(3);
+    expect(run.attempt.lostHeart).toBe(false);
+  });
+
+  it('running the untouched Fix prefill once is free', () => {
+    let run = submitLine(startLesson(one(fix), 'linux'), 'rm junk', bash).run;
+    expect(run.hearts).toBe(3);
+    run = submitLine(run, 'rm junk', bash).run;
+    expect(run.hearts).toBe(2); // only the first run is free
+  });
+
+  it('pick: right answers earn XP, wrong ones cost a heart and move on', () => {
+    const right = answerChoice(startLesson(one(pickC), 'linux'), 2);
+    expect(right.event).toBe('solved');
+    expect(right.xp).toBe(15);
+    const wrong = answerChoice(startLesson(one(pickC), 'linux'), 0);
+    expect(wrong.event).toBe('wrong');
+    expect(wrong.run.hearts).toBe(2);
+    expect(isLastChallenge(wrong.run)).toBe(false);
+  });
+
+  it('build runs the assembled line for real', () => {
+    expect(answerLine(startLesson(one(buildC), 'linux'), 'rm junk.txt', bash).event).toBe('solved');
+    const wrong = answerLine(startLesson(one(buildC), 'linux'), 'junk.txt rm', bash);
+    expect(wrong.event).toBe('wrong');
+    expect(wrong.step.result.stderr).toContain('command not found');
+  });
+
+  it('learn cards give no XP and are never re-queued', () => {
+    const r = completeCard(startLesson(one(learnC), 'linux'));
+    expect(r.xp).toBe(0);
+    expect(nextChallenge(r.run)).toBeNull();
   });
 });

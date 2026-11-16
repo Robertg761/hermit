@@ -96,10 +96,10 @@ export function Home({ os, units, upcoming, completed, xp, streak, streakToday, 
                         <div className="node-pop" onClick={(e) => e.stopPropagation()}>
                           <p className="node-pop-title">{lesson.title}</p>
                           <p className="node-pop-meta">
-                            Lesson {li + 1} of {unit.lessons.length} · {lesson.challenges.length} challenges
+                            Lesson {li + 1} of {unit.lessons.length} · {lesson.challenges.length} steps
                           </p>
                           <button type="button" className="primary-button" autoFocus onClick={() => onStart(lesson.id)}>
-                            {state === 'done' ? 'Practice again +XP' : `Start +${lesson.challenges.length * 15} XP`}
+                            {state === 'done' ? 'Practice again +XP' : `Start +${lesson.challenges.filter((c) => c.type !== 'learn').length * 15} XP`}
                           </button>
                         </div>
                       )}
