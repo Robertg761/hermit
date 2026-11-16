@@ -1,6 +1,6 @@
 import type { SeedState } from '../../domain/machine';
-import { same, type Lesson, type PerOs, type Unit } from '../../domain/lessons/types';
-import { predict } from '../builders';
+import type { Lesson, PerOs, Unit } from '../../domain/lessons/types';
+import { build, byHome, fill, learn, match, pick, predict, px, same, task, typeAlong } from '../builders';
 
 /** The learner's home folder in Unit 1: a small, lived-in burrow. */
 const burrow = (os: 'posix' | 'windows'): SeedState => ({
@@ -11,9 +11,11 @@ const burrow = (os: 'posix' | 'windows'): SeedState => ({
     'projects/game/main.py': 'print("crab rave")\n',
     'photos/beach.jpg': 'JPEG',
     'photos/tidepool.jpg': 'JPEG',
-    ...(os === 'posix' ? { '.shellby-secret': 'I was a snail once.\n' } : { 'shellby-secret.txt': 'I was a snail once.\n' }),
+    ...(os === 'posix'
+      ? { '.shellby-secret': 'I was a snail once.\n', 'projects/.plan': 'Step 1: bigger shell.\n' }
+      : { 'shellby-secret.txt': 'I was a snail once.\n', 'projects/plan.txt': 'Step 1: bigger shell.\n' }),
   },
-  ...(os === 'windows' ? { hidden: ['shellby-secret.txt'] } : {}),
+  ...(os === 'windows' ? { hidden: ['shellby-secret.txt', 'projects/plan.txt'] } : {}),
 });
 
 const seedAt = (cwd?: string): PerOs<SeedState> => {
@@ -21,194 +23,354 @@ const seedAt = (cwd?: string): PerOs<SeedState> => {
   return { linux: at(burrow('posix')), mac: at(burrow('posix')), windows: at(burrow('windows')) };
 };
 
+const printsPath = (rel = ''): PerOs<{ kind: 'stdoutIncludes'; text: string }> => {
+  const p = byHome((h) => (rel === '' ? h : `${h}/${rel}`), rel === '' ? 'C:\\Users\\you' : `C:\\Users\\you\\${rel.replace(/\//g, '\\')}`);
+  return { linux: { kind: 'stdoutIncludes', text: p.linux }, mac: { kind: 'stdoutIncludes', text: p.mac }, windows: { kind: 'stdoutIncludes', text: p.windows } };
+};
+
+// ---------------------------------------------------------------------------
+// Lesson 1: Hello, terminal
+// ---------------------------------------------------------------------------
+
 export const unit1Lesson1: Lesson = {
   id: 'u1-l1',
-  title: 'Look around',
+  title: 'Hello, terminal',
   challenges: [
-    {
+    learn({
       id: 'u1-l1-c1',
-      type: 'do',
-      prompt: same('You just woke up in a terminal. Print the full path of the folder you are standing in.'),
+      teaches: ['prompt'],
       seed: seedAt(),
-      goal: {
-        linux: { kind: 'stdoutIncludes', text: '/home/you' },
-        mac: { kind: 'stdoutIncludes', text: '/Users/you' },
-        windows: { kind: 'stdoutIncludes', text: 'C:\\Users\\you' },
+      card: {
+        linux: {
+          title: 'This is a terminal',
+          body: 'You talk to your computer by typing. The line ending in `$` is the **prompt**: it means "your turn". It shows who you are (`you`), which computer (`hermit`) and where you are (`~` is your home folder, the one your file manager opens to).',
+        },
+        mac: {
+          title: 'This is a terminal',
+          body: 'You talk to your computer by typing. The line ending in `%` is the **prompt**: it means "your turn". It shows who you are (`you`), which computer (`Hermits-MacBook`) and where you are (`~` is your home folder, the one Finder opens to).',
+        },
+        windows: {
+          title: 'This is a terminal',
+          body: 'You talk to your computer by typing. The line ending in `>` is the **prompt**: it means "your turn". `PS` means PowerShell, then comes where you are: `C:\\Users\\you`, your home folder, the one File Explorer opens to.',
+        },
       },
-      solutions: { linux: [['pwd']], mac: [['pwd']], windows: [['Get-Location'], ['pwd']] },
-      hints: {
-        linux: ['The command stands for "print working directory".', 'Type `pwd`.'],
-        mac: ['The command stands for "print working directory".', 'Type `pwd`.'],
-        windows: ['PowerShell cmdlets are Verb-Noun. You want to *get* your *location*.', 'Type `Get-Location` (or its alias `pwd`).'],
-      },
-      explain: {
-        linux: '`pwd` prints the working directory. On Linux your home folder lives at /home/you.',
-        mac: '`pwd` prints the working directory. On macOS your home folder lives at /Users/you.',
-        windows: '`Get-Location` returns your current path. `pwd` is a built-in alias for it. Your home is C:\\Users\\you.',
-      },
-    },
-    {
+    }),
+    learn({
       id: 'u1-l1-c2',
-      type: 'do',
-      prompt: same('Show what is in this folder.'),
+      teaches: ['pwd'],
+      uses: ['prompt'],
       seed: seedAt(),
-      goal: same({ kind: 'stdoutIncludes', text: 'projects' }),
-      solutions: { linux: [['ls']], mac: [['ls']], windows: [['Get-ChildItem'], ['ls'], ['dir']] },
-      hints: {
-        linux: ['It is a two-letter command, short for "list".', 'Type `ls`.'],
-        mac: ['It is a two-letter command, short for "list".', 'Type `ls`.'],
-        windows: ['You want to *get* the *child items* of this folder.', 'Type `Get-ChildItem` (aliases: `ls`, `dir`).'],
+      card: {
+        linux: { title: 'pwd: where am I?', body: "You're always standing in exactly one folder. `pwd` (**p**rint **w**orking **d**irectory) tells you which.", example: 'pwd' },
+        mac: { title: 'pwd: where am I?', body: "You're always standing in exactly one folder. `pwd` (**p**rint **w**orking **d**irectory) tells you which.", example: 'pwd' },
+        windows: {
+          title: 'Get-Location: where am I?',
+          body: "You're always standing in exactly one folder. `Get-Location` tells you which. PowerShell commands are a verb and a noun: *Get* the *Location*. The short `pwd` works too.",
+          example: 'Get-Location',
+        },
       },
-      explain: {
-        linux: '`ls` lists the files and folders where you are. Folders show up in blue.',
-        mac: '`ls` lists the files and folders where you are.',
-        windows: '`Get-ChildItem` lists what is in a folder. `ls` and `dir` are aliases, so habits from other shells still work.',
-      },
-    },
-    {
+    }),
+    typeAlong({
       id: 'u1-l1-c3',
-      type: 'do',
-      prompt: same('Shellby swears there is a secret file in here that a plain listing hides. Reveal it.'),
+      uses: ['pwd'],
+      prompt: same('Your turn. Type it and press Enter.'),
       seed: seedAt(),
-      goal: {
-        linux: { kind: 'stdoutIncludes', text: '.shellby-secret' },
-        mac: { kind: 'stdoutIncludes', text: '.shellby-secret' },
-        windows: { kind: 'stdoutIncludes', text: 'shellby-secret.txt' },
-      },
-      solutions: {
-        linux: [['ls -a'], ['ls -la'], ['ls -A']],
-        mac: [['ls -a'], ['ls -la'], ['ls -A']],
-        windows: [['Get-ChildItem -Force'], ['ls -Force'], ['dir -Force']],
-      },
-      hints: {
-        linux: ['Files whose names start with a dot are hidden. `ls` has a flag for *all* files.', 'Type `ls -a`.'],
-        mac: ['Files whose names start with a dot are hidden. `ls` has a flag for *all* files.', 'Type `ls -a`.'],
-        windows: ['Windows hides files with a hidden attribute. Get-ChildItem needs to be *forced* to show them.', 'Type `Get-ChildItem -Force`.'],
-      },
+      goal: printsPath(),
+      line: px('pwd', 'Get-Location'),
+      also: px([], [['pwd']]),
       explain: {
-        linux: 'On Linux any name starting with `.` is hidden. `ls -a` shows all of them, including `.` (here) and `..` (the parent).',
-        mac: 'On macOS any name starting with `.` is hidden. `ls -a` shows all of them, including `.` (here) and `..` (the parent).',
-        windows: 'Windows hides files by attribute, not by name. `-Force` makes Get-ChildItem include hidden and system files.',
+        linux: "That's a **path**, the address of a folder. Read it left to right: from the top (`/`), into `home`, into `you`.",
+        mac: "That's a **path**, the address of a folder. Read it left to right: from the top (`/`), into `Users`, into `you`.",
+        windows: "That's a **path**, the address of a folder. Read it left to right: the `C:` drive, into `Users`, into `you`.",
       },
-    },
-    {
+    }),
+    pick({
       id: 'u1-l1-c4',
-      type: 'do',
-      prompt: same('List this folder again, but with details: permissions, sizes and dates.'),
-      seed: seedAt(),
-      goal: {
-        linux: { kind: 'stdoutIncludes', text: 'rw-r--r--' },
-        mac: { kind: 'stdoutIncludes', text: 'rw-r--r--' },
-        windows: { kind: 'stdoutIncludes', text: 'LastWriteTime' },
-      },
-      solutions: {
-        linux: [['ls -l'], ['ls -la']],
-        mac: [['ls -l'], ['ls -la']],
-        windows: [['Get-ChildItem'], ['dir']],
-      },
-      hints: {
-        linux: ['`ls` has a flag for the *long* format.', 'Type `ls -l`.'],
-        mac: ['`ls` has a flag for the *long* format.', 'Type `ls -l`.'],
-        windows: ['In PowerShell, the plain listing already shows details.', 'Type `Get-ChildItem`.'],
-      },
-      explain: {
-        linux: '`ls -l` shows permissions, owner, size and modified date. You can combine flags: `ls -la`.',
-        mac: '`ls -l` shows permissions, owner, size and modified date. You can combine flags: `ls -la`.',
-        windows: 'Get-ChildItem returns objects with Mode, LastWriteTime, Length and Name, so details come for free.',
-      },
-    },
+      uses: ['pwd'],
+      prompt: px('What does `pwd` do?', 'What does `Get-Location` do?'),
+      options: px(
+        ["Shows which folder you're in", 'Shows your password', 'Lists the files here'],
+        ["Shows which folder you're in", 'Finds your location on a map', 'Lists the files here'],
+      ),
+      answer: same(0),
+      reasons: px(
+        ['Right: print working directory.', 'Easy mix-up, but pwd is not your password. Never type passwords into random commands.', "That's a different command. You'll meet it next lesson."],
+        ['Right: your location among the folders.', 'Location here means your place among the folders, not on Earth.', "That's a different command. You'll meet it next lesson."],
+      ),
+      explain: px('`pwd` prints the folder you are standing in.', '`Get-Location` returns the folder you are standing in.'),
+    }),
     predict({
       id: 'u1-l1-c5',
-      prompt: same('Shellby opened a fresh terminal and typed this. What does it print?'),
-      seed: seedAt(),
-      command: { linux: ['pwd'], mac: ['pwd'], windows: ['Get-Location'] },
+      uses: ['pwd'],
+      prompt: same('Shellby is in his photos folder and types this. What prints?'),
+      seed: seedAt('photos'),
+      command: px(['pwd'], ['Get-Location']),
       options: {
-        linux: ['/home/you', '/', '/Users/you'],
-        mac: ['/', '/Users/you', '/home/you'],
-        windows: ['C:\\', 'C:\\Windows', 'C:\\Users\\you'],
+        linux: ['/home/you/photos', '/photos', '/home/you'],
+        mac: ['/Users/you', '/Users/you/photos', '/photos'],
+        windows: ['C:\\photos', 'C:\\Users\\you', 'C:\\Users\\you\\photos'],
       },
       answer: { linux: 0, mac: 1, windows: 2 },
-      hints: same(['A new terminal always starts in your home folder.']),
-      explain: {
-        linux: 'New terminals open in your home folder, which is /home/you on Linux.',
-        mac: 'New terminals open in your home folder, which is /Users/you on macOS.',
-        windows: 'New PowerShell windows open in your profile folder, C:\\Users\\you.',
-      },
+      hints: same(['The path is the whole address, from the top down to the folder you are in.']),
+      explain: same('A path always starts at the very top, so photos sits at the end of your home folder path.'),
+    }),
+    learn({
+      id: 'u1-l1-c6',
+      teaches: ['errors'],
+      uses: ['prompt'],
+      seed: seedAt(),
+      card: px(
+        { title: 'Mistakes are safe', body: "If the terminal doesn't know a word, it says so and gives you the prompt back. Nothing breaks. Read the message: it usually tells you what went wrong.", example: 'shellby' },
+        { title: 'Mistakes are safe', body: "If PowerShell doesn't know a word, it says so and gives you the prompt back. Nothing breaks. Read the message: it usually tells you what went wrong.", example: 'shellby' },
+      ),
+    }),
+    task({
+      id: 'u1-l1-c7',
+      uses: ['pwd', 'errors'],
+      prompt: same('Shellby typed this and got an error. Press Enter to see it, then fix the command.'),
+      seed: seedAt(),
+      prefill: px('pdw', 'Get-Locaton'),
+      goal: printsPath(),
+      solutions: px([['pwd']], [['Get-Location'], ['pwd']]),
+      hints: px(['The letters are in the wrong order.', 'Type `pwd`.'], ['One letter is missing.', 'Type `Get-Location`.']),
+      explain: px('"command not found" means there is no command with that name. Usually it is a typo.', '"is not recognized" means PowerShell has no command with that name. Usually it is a typo.'),
+    }),
+    task({
+      id: 'u1-l1-c8',
+      uses: ['pwd'],
+      openHint: true,
+      prompt: same("Shellby moved you while you weren't looking. Find out where you are."),
+      seed: seedAt('projects/game'),
+      goal: printsPath('projects/game'),
+      solutions: px([['pwd']], [['Get-Location'], ['pwd']]),
+      hints: px(['Ask the terminal for your working directory.', 'Type `pwd`.'], ['*Get* your *Location*.', 'Type `Get-Location`.']),
+      explain: same('You are in the game folder, inside projects, inside your home folder. The prompt hints at it too.'),
     }),
   ],
 };
 
+// ---------------------------------------------------------------------------
+// Lesson 2: Look around
+// ---------------------------------------------------------------------------
+
 export const unit1Lesson2: Lesson = {
   id: 'u1-l2',
-  title: 'Move around',
+  title: 'Look around',
   challenges: [
-    {
+    learn({
       id: 'u1-l2-c1',
-      type: 'do',
-      prompt: same('Step inside the projects folder.'),
+      teaches: ['ls'],
+      seed: seedAt(),
+      card: {
+        linux: { title: "ls: what's here?", body: "`ls` (short for **l**i**s**t) shows what's inside the folder you're in, like opening it in your file manager.", example: 'ls' },
+        mac: { title: "ls: what's here?", body: "`ls` (short for **l**i**s**t) shows what's inside the folder you're in, like opening it in Finder.", example: 'ls' },
+        windows: {
+          title: "Get-ChildItem: what's here?",
+          body: "`Get-ChildItem` shows what's inside the folder you're in, like opening it in File Explorer. *Get* the *child items*: the things inside. `ls` and `dir` work too.",
+          example: 'Get-ChildItem',
+        },
+      },
+    }),
+    typeAlong({
+      id: 'u1-l2-c2',
+      uses: ['ls'],
+      prompt: same('Type it and press Enter.'),
+      seed: seedAt(),
+      goal: same({ kind: 'stdoutIncludes', text: 'projects' }),
+      line: px('ls', 'Get-ChildItem'),
+      explain: {
+        linux: 'Folders and files both show up. Names ending in `.txt` or `.jpg` are files; the blue ones are folders.',
+        mac: 'Folders and files both show up. Names ending in `.txt` or `.jpg` are files; the rest are folders.',
+        windows: 'Folders and files both show up. Folders have a `d` in the Mode column and no Length (size).',
+      },
+    }),
+    pick({
+      id: 'u1-l2-c3',
+      uses: ['ls', 'pwd'],
+      prompt: same('You want to see what is in this folder. Which command?'),
+      options: px(['pwd', 'ls', 'list'], ['Get-Location', 'Get-Files', 'Get-ChildItem']),
+      answer: px(1, 2),
+      reasons: px(
+        ['That tells you *where* you are, not what is there.', 'Right: list.', "Close in meaning, but commands are short. There's no `list` command."],
+        ['That tells you *where* you are, not what is there.', "Sounds right, but there's no such cmdlet. The things in a folder are its *child items*.", 'Right: the child items are what is inside.'],
+      ),
+      explain: px('`ls` lists what is here.', '`Get-ChildItem` lists what is here.'),
+    }),
+    task({
+      id: 'u1-l2-c4',
+      uses: ['ls'],
+      openHint: true,
+      prompt: same('You are in the photos folder. Which photos does Shellby have?'),
+      seed: seedAt('photos'),
+      goal: same({ kind: 'stdoutIncludes', text: 'tidepool.jpg' }),
+      solutions: px([['ls']], [['Get-ChildItem'], ['ls'], ['dir']]),
+      hints: px(['List what is here.', 'Type `ls`.'], ['Get the child items.', 'Type `Get-ChildItem`.']),
+      explain: same('Two photos: beach.jpg and tidepool.jpg.'),
+    }),
+    pick({
+      id: 'u1-l2-c5',
+      uses: ['pwd', 'ls'],
+      review: true,
+      prompt: same('Which command tells you where you are?'),
+      options: px(['pwd', 'ls', 'where'], ['Get-ChildItem', 'Get-Location', 'Get-Where']),
+      answer: px(0, 1),
+      reasons: px(
+        ['Right: print working directory.', 'That lists what is here.', 'Not the command you want here.'],
+        ['That lists what is here.', 'Right.', 'Not a real cmdlet.'],
+      ),
+      explain: px('`pwd` prints your working directory.', '`Get-Location` returns your current folder.'),
+    }),
+    learn({
+      id: 'u1-l2-c6',
+      teaches: ['ls-a'],
+      uses: ['ls'],
+      seed: seedAt(),
+      card: px(
+        {
+          title: 'Flags change how a command works',
+          body: 'A **flag** starts with a dash and goes after a space: `ls -a` means "list, **a**ll of them". Names starting with a dot are hidden, and `-a` shows them.',
+          example: 'ls -a',
+        },
+        {
+          title: 'Parameters change how a command works',
+          body: 'A **parameter** starts with a dash and goes after a space. `Get-ChildItem -Force` *forces* hidden files to show. Windows hides files with a hidden setting, not with a dot.',
+          example: 'Get-ChildItem -Force',
+        },
+      ),
+    }),
+    build({
+      id: 'u1-l2-c7',
+      uses: ['ls-a'],
+      prompt: same('Build the command that reveals hidden files.'),
+      seed: seedAt(),
+      goal: px({ kind: 'stdoutIncludes', text: '.shellby-secret' }, { kind: 'stdoutIncludes', text: 'shellby-secret.txt' }),
+      tokens: px(['all', 'ls', 'pwd', '-a', 'a'], ['-Show', 'Get-ChildItem', 'Force', 'Get-Location', '-Force']),
+      solutions: px([['ls -a']], [['Get-ChildItem -Force']]),
+      hints: same(['Command first, then the flag with its dash.']),
+      explain: px('There it is: `.shellby-secret`. The dot at the start is what hides it.', 'There it is: `shellby-secret.txt`, with an `h` (hidden) in its Mode.'),
+    }),
+    match({
+      id: 'u1-l2-c8',
+      uses: ['pwd', 'ls', 'ls-a'],
+      pairs: px(
+        [
+          ['pwd', 'Where am I?'],
+          ['ls', "What's in here?"],
+          ['ls -a', "What's in here, hidden things too?"],
+        ],
+        [
+          ['Get-Location', 'Where am I?'],
+          ['Get-ChildItem', "What's in here?"],
+          ['Get-ChildItem -Force', "What's in here, hidden things too?"],
+        ],
+      ),
+      explain: same('Three questions you will ask the terminal all the time.'),
+    }),
+    task({
+      id: 'u1-l2-c9',
+      uses: ['ls-a'],
+      prompt: same('Something is hiding in projects too. You are already in projects. Find it.'),
+      seed: seedAt('projects'),
+      goal: px({ kind: 'stdoutIncludes', text: '.plan' }, { kind: 'stdoutIncludes', text: 'plan.txt' }),
+      solutions: px([['ls -a'], ['ls -A']], [['Get-ChildItem -Force'], ['ls -Force'], ['dir -Force']]),
+      hints: px(['A plain list hides it. Add the flag for *all*.', 'Type `ls -a`.'], ['A plain list hides it. Force it to show.', 'Type `Get-ChildItem -Force`.']),
+      explain: px('Shellby has a `.plan`. Hidden files often hold settings and notes.', 'Shellby has a hidden `plan.txt`. Hidden files often hold settings and notes.'),
+    }),
+    task({
+      id: 'u1-l2-c10',
+      uses: ['pwd'],
+      review: true,
+      prompt: same('Before you go: Shellby says you are somewhere in the burrow. Check exactly where.'),
+      seed: seedAt('photos'),
+      goal: printsPath('photos'),
+      solutions: px([['pwd']], [['Get-Location'], ['pwd']]),
+      hints: px(['Print your working directory.', 'Type `pwd`.'], ['Get your location.', 'Type `Get-Location`.']),
+      explain: same('You were in photos all along.'),
+    }),
+  ],
+};
+
+// ---------------------------------------------------------------------------
+// Lesson 3: Step inside
+// ---------------------------------------------------------------------------
+
+export const unit1Lesson3: Lesson = {
+  id: 'u1-l3',
+  title: 'Step inside',
+  challenges: [
+    learn({
+      id: 'u1-l3-c1',
+      teaches: ['cd'],
+      seed: seedAt(),
+      card: px(
+        { title: 'cd: go into a folder', body: '`cd` (**c**hange **d**irectory) is like double-clicking a folder. Afterwards, your prompt shows where you are.', example: 'cd projects' },
+        {
+          title: 'Set-Location: go into a folder',
+          body: '`Set-Location` is like double-clicking a folder. Its short name is `cd`, which everyone uses. Afterwards, your prompt shows where you are.',
+          example: 'cd projects',
+        },
+      ),
+    }),
+    typeAlong({
+      id: 'u1-l3-c2',
+      uses: ['cd'],
+      prompt: same('Type it and watch the prompt change.'),
       seed: seedAt(),
       goal: same({ kind: 'cwdIs', path: 'projects' }),
-      solutions: {
-        linux: [['cd projects']],
-        mac: [['cd projects']],
-        windows: [['Set-Location projects'], ['cd projects']],
-      },
-      hints: {
-        linux: ['You want to *change directory*.', 'Type `cd projects`.'],
-        mac: ['You want to *change directory*.', 'Type `cd projects`.'],
-        windows: ['You want to *set* your *location*.', 'Type `Set-Location projects` (alias `cd`).'],
-      },
+      line: same('cd projects'),
       explain: {
-        linux: '`cd` changes directory. Notice the prompt now shows `~/projects`.',
-        mac: '`cd` changes directory. Notice the prompt now shows `projects`.',
-        windows: '`Set-Location` changes your folder, and `cd` is its alias. Notice the prompt changed.',
+        linux: 'Your prompt now ends in `~/projects`: you are inside projects.',
+        mac: 'Your prompt now shows `projects`: you are inside it.',
+        windows: 'Your prompt now ends in `\\projects>`: you are inside projects.',
       },
-    },
-    {
-      id: 'u1-l2-c2',
-      type: 'do',
-      prompt: same('You are in projects/website. Go up exactly one folder, to projects.'),
-      seed: seedAt('projects/website'),
+    }),
+    task({
+      id: 'u1-l3-c3',
+      uses: ['ls'],
+      review: true,
+      prompt: same('You are in projects now. What is inside?'),
+      seed: seedAt('projects'),
+      goal: same({ kind: 'stdoutIncludes', text: 'website' }),
+      solutions: px([['ls']], [['Get-ChildItem'], ['ls'], ['dir']]),
+      hints: px(['List what is here.', 'Type `ls`.'], ['Get the child items.', 'Type `Get-ChildItem`.']),
+      explain: same('Two folders: game and website.'),
+    }),
+    build({
+      id: 'u1-l3-c4',
+      uses: ['cd'],
+      prompt: same('You are in projects. Build the command that walks into the game folder.'),
+      seed: seedAt('projects'),
+      goal: same({ kind: 'cwdIs', path: 'projects/game' }),
+      tokens: px(['into', 'cd', 'pwd', 'game', 'ls'], ['-Into', 'Get-Location', 'game', 'Set-Location', 'Get-ChildItem']),
+      solutions: px([['cd game']], [['Set-Location game']]),
+      hints: same(['Command first, then the folder you want to go into.']),
+      explain: same('The folder name is the **argument**: the thing the command acts on.'),
+    }),
+    learn({
+      id: 'u1-l3-c5',
+      teaches: ['cd-up'],
+      uses: ['cd'],
+      seed: seedAt('projects/game'),
+      card: same({ title: '.. is the folder above', body: 'Two dots always mean "one level up". `cd ..` climbs out of the folder you are in.', example: 'cd ..' }),
+    }),
+    fill({
+      id: 'u1-l3-c6',
+      uses: ['cd-up'],
+      prompt: same('You are in game. Go up one folder.'),
+      seed: seedAt('projects/game'),
       goal: same({ kind: 'cwdIs', path: 'projects' }),
-      solutions: { linux: [['cd ..']], mac: [['cd ..']], windows: [['cd ..'], ['Set-Location ..']] },
-      hints: {
-        linux: ['Two dots mean "the folder above this one".', 'Type `cd ..`.'],
-        mac: ['Two dots mean "the folder above this one".', 'Type `cd ..`.'],
-        windows: ['Two dots mean "the folder above this one", on Windows too.', 'Type `cd ..`.'],
-      },
-      explain: same('`..` always means the parent folder, so `cd ..` climbs one level.'),
-    },
-    {
-      id: 'u1-l2-c3',
-      type: 'do',
-      prompt: same('You wandered deep into projects/website. Head back to your home folder.'),
-      seed: seedAt('projects/website'),
-      goal: same({ kind: 'cwdIs', path: '' }),
-      solutions: {
-        linux: [['cd ~'], ['cd'], ['cd ../..']],
-        mac: [['cd ~'], ['cd'], ['cd ../..']],
-        windows: [['cd ~'], ['Set-Location ~'], ['cd ..\\..']],
-      },
-      hints: {
-        linux: ['`..` means "one folder up", and `~` means "home".', 'Type `cd ~` (or `cd ..` twice).'],
-        mac: ['`..` means "one folder up", and `~` means "home".', 'Type `cd ~` (or `cd ..` twice).'],
-        windows: ['`..` means "one folder up", and `~` means "home" in PowerShell too.', 'Type `cd ~` (or `cd ..` twice).'],
-      },
-      explain: {
-        linux: '`cd ..` goes up one level and `cd ~` (or plain `cd`) jumps straight home.',
-        mac: '`cd ..` goes up one level and `cd ~` (or plain `cd`) jumps straight home.',
-        windows: '`cd ..` goes up one level and `cd ~` jumps home. PowerShell accepts both `\\` and `/` in paths.',
-      },
-    },
+      template: same('cd ___'),
+      options: same(['up', '..', '.', 'back']),
+      answer: same(1),
+      hints: same(['Two dots mean the folder above.']),
+      explain: same('`..` is the folder above. One dot, `.`, means the folder you are already in.'),
+    }),
     predict({
-      id: 'u1-l2-c4',
+      id: 'u1-l3-c7',
+      uses: ['cd', 'cd-up', 'pwd'],
       prompt: same('Starting at home, Shellby types these lines. What does the last one print?'),
       seed: seedAt(),
-      command: {
-        linux: ['cd projects/game', 'cd ..', 'pwd'],
-        mac: ['cd projects/game', 'cd ..', 'pwd'],
-        windows: ['cd projects\\game', 'cd ..', 'Get-Location'],
-      },
+      command: px(['cd projects/game', 'cd ..', 'pwd'], ['cd projects\\game', 'cd ..', 'Get-Location']),
       options: {
         linux: ['/home/you/projects/game', '/home/you/projects', '/home/you'],
         mac: ['/Users/you/projects', '/Users/you', '/Users/you/projects/game'],
@@ -218,35 +380,180 @@ export const unit1Lesson2: Lesson = {
       hints: same(['`..` undoes one step of the path.']),
       explain: same('You went down two levels, then up one, so you end up in projects.'),
     }),
-    {
-      id: 'u1-l2-c5',
-      type: 'fix',
-      prompt: same('Shellby tried to jump into the game folder but fumbled the spelling. Fix the command and run it.'),
+    task({
+      id: 'u1-l3-c8',
+      uses: ['cd', 'errors'],
+      prompt: same('Shellby tried to jump into the game folder but fumbled the spelling. Run it to read the error, then fix it.'),
       seed: seedAt(),
-      prefill: { linux: 'cd projects/gaem', mac: 'cd projects/gaem', windows: 'cd projects\\gaem' },
+      prefill: px('cd projects/gaem', 'cd projects\\gaem'),
       goal: same({ kind: 'cwdIs', path: 'projects/game' }),
-      solutions: {
-        linux: [['cd projects/game']],
-        mac: [['cd projects/game']],
-        windows: [['cd projects\\game'], ['Set-Location projects/game']],
-      },
-      hints: {
-        linux: ['Read the error: the folder name is misspelled.', 'Type `cd projects/game`.'],
-        mac: ['Read the error: the folder name is misspelled.', 'Type `cd projects/game`.'],
-        windows: ['Read the error: the folder name is misspelled.', 'Type `cd projects\\game`.'],
-      },
-      explain: {
-        linux: 'You can `cd` through several folders at once with a path like `projects/game`.',
-        mac: 'You can `cd` through several folders at once with a path like `projects/game`.',
-        windows: 'You can `cd` through several folders at once. PowerShell accepts `projects\\game` or `projects/game`.',
-      },
-    },
+      solutions: px([['cd projects/game']], [['cd projects\\game'], ['Set-Location projects/game']]),
+      hints: px(['Read the error: the folder name is misspelled.', 'Type `cd projects/game`.'], ['Read the error: the folder name is misspelled.', 'Type `cd projects\\game`.']),
+      explain: px(
+        'You can `cd` through several folders at once with a path like `projects/game`.',
+        'You can `cd` through several folders at once. PowerShell accepts `projects\\game` or `projects/game`.',
+      ),
+    }),
+    task({
+      id: 'u1-l3-c9',
+      uses: ['cd', 'cd-up'],
+      prompt: same('You are in website. Get to the game folder next door.'),
+      seed: seedAt('projects/website'),
+      goal: same({ kind: 'cwdIs', path: 'projects/game' }),
+      solutions: px([['cd ..', 'cd game'], ['cd ../game']], [['cd ..', 'cd game'], ['cd ..\\game'], ['cd ../game']]),
+      hints: same(['First climb up to projects, then step into game.', 'Type `cd ..`, then `cd game`.']),
+      explain: px('Two steps, or one: `cd ../game` goes up and into game in a single path.', 'Two steps, or one: `cd ..\\game` goes up and into game in a single path.'),
+    }),
+    pick({
+      id: 'u1-l3-c10',
+      uses: ['ls-a'],
+      review: true,
+      prompt: same('Which command also shows hidden files?'),
+      options: px(['ls -a', 'ls a', 'ls-a'], ['Get-ChildItem Force', 'Get-ChildItem -Force', 'Get-ChildItem-Force']),
+      answer: px(0, 1),
+      reasons: px(
+        ['Right: command, space, dash, flag.', 'Without the dash, `a` is treated as a folder name.', 'Without a space, the terminal looks for a command called `ls-a`.'],
+        ['Without the dash, `Force` is treated as a folder name.', 'Right: command, space, dash, parameter.', 'Without a space, PowerShell looks for a command with that whole name.'],
+      ),
+      explain: same('A flag needs a space before it and a dash at its start.'),
+    }),
+  ],
+};
+
+// ---------------------------------------------------------------------------
+// Lesson 4: Shortcuts and details
+// ---------------------------------------------------------------------------
+
+export const unit1Lesson4: Lesson = {
+  id: 'u1-l4',
+  title: 'Shortcuts and details',
+  challenges: [
+    learn({
+      id: 'u1-l4-c1',
+      teaches: ['cd-home'],
+      uses: ['cd'],
+      seed: seedAt('projects/website'),
+      card: px(
+        { title: '~ means home', body: 'It is the `~` in your prompt. `cd ~` takes you home from anywhere. (Plain `cd` does too.)', example: 'cd ~' },
+        { title: '~ means home', body: '`~` is short for your home folder, `C:\\Users\\you`. `cd ~` takes you home from anywhere.', example: 'cd ~' },
+      ),
+    }),
+    task({
+      id: 'u1-l4-c2',
+      uses: ['cd-home'],
+      openHint: true,
+      prompt: same('You wandered deep into projects/website. Head back to your home folder.'),
+      seed: seedAt('projects/website'),
+      goal: same({ kind: 'cwdIs', path: '' }),
+      solutions: px([['cd ~'], ['cd'], ['cd ../..']], [['cd ~'], ['Set-Location ~'], ['cd ..\\..']]),
+      hints: px(['`~` means home.', 'Type `cd ~`.'], ['`~` means home in PowerShell too.', 'Type `cd ~`.']),
+      explain: same('`cd ~` jumps straight home, no matter how deep you are.'),
+    }),
+    pick({
+      id: 'u1-l4-c3',
+      uses: ['cd-home', 'cd-up'],
+      prompt: same('Which command takes you home from *anywhere*?'),
+      options: same(['cd home', 'cd ..', 'cd ~', 'home']),
+      answer: same(2),
+      reasons: same([
+        'That looks for a folder called home inside the one you are in.',
+        'That only climbs one level.',
+        'Right: `~` is always your home folder.',
+        'There is no `home` command.',
+      ]),
+      explain: same('`~` is a shortcut for your home folder, wherever you are.'),
+    }),
+    learn({
+      id: 'u1-l4-c4',
+      teaches: ['ls-l'],
+      uses: ['ls'],
+      seed: seedAt('photos'),
+      card: px(
+        {
+          title: 'ls -l: the long list',
+          body: '`-l` (**l**ong) adds details to each line: permissions (who may read or change it), owner, size in bytes, when it last changed, and the name.',
+          example: 'ls -l',
+        },
+        {
+          title: 'The details are already there',
+          body: 'No flag needed: `Get-ChildItem` already shows details. `Mode` is the type and settings, `LastWriteTime` is when it last changed, `Length` is the size in bytes.',
+          example: 'Get-ChildItem',
+        },
+      ),
+    }),
+    typeAlong({
+      id: 'u1-l4-c5',
+      uses: ['ls-l'],
+      prompt: same('List the photos folder with details.'),
+      seed: seedAt('photos'),
+      goal: px({ kind: 'stdoutIncludes', text: 'rw-r--r--' }, { kind: 'stdoutIncludes', text: 'LastWriteTime' }),
+      line: px('ls -l', 'Get-ChildItem'),
+      explain: same('Each photo is 4 bytes here. Real photos are millions.'),
+    }),
+    pick({
+      id: 'u1-l4-c6',
+      uses: ['ls-l'],
+      prompt: px('Which flag adds sizes and dates to `ls`?', 'Which column shows when a file last changed?'),
+      options: px(['-a', '-l', '-size'], ['Mode', 'Length', 'LastWriteTime']),
+      answer: px(1, 2),
+      reasons: px(
+        ['That shows hidden files.', 'Right: long.', 'Not a real flag.'],
+        ['That shows the type and settings.', 'That is the size in bytes.', 'Right: the last time it was written to.'],
+      ),
+      explain: px('`ls -l` is the long listing.', '`LastWriteTime` is when the file last changed.'),
+    }),
+    match({
+      id: 'u1-l4-c7',
+      uses: ['pwd', 'ls', 'ls-a', 'cd-up', 'cd-home'],
+      review: true,
+      pairs: px(
+        [
+          ['pwd', 'Where am I?'],
+          ['ls', "What's in here?"],
+          ['ls -a', 'Show hidden files too'],
+          ['cd ..', 'Go up one folder'],
+          ['cd ~', 'Go home'],
+        ],
+        [
+          ['Get-Location', 'Where am I?'],
+          ['Get-ChildItem', "What's in here?"],
+          ['Get-ChildItem -Force', 'Show hidden files too'],
+          ['cd ..', 'Go up one folder'],
+          ['cd ~', 'Go home'],
+        ],
+      ),
+      explain: same('That is all of Unit 1. You can find your way around a computer now.'),
+    }),
+    task({
+      id: 'u1-l4-c8',
+      uses: ['ls', 'cd'],
+      prompt: same('Shellby lost his tidepool photo. Go to the folder it is in.'),
+      seed: seedAt(),
+      goal: same({ kind: 'cwdIs', path: 'photos' }),
+      solutions: px([['ls', 'cd photos'], ['cd photos']], [['Get-ChildItem', 'cd photos'], ['cd photos']]),
+      hints: px(
+        ['Look around with `ls` first. Which folder sounds like it holds photos?', 'Type `cd photos`.'],
+        ['Look around with `Get-ChildItem` first. Which folder sounds like it holds photos?', 'Type `cd photos`.'],
+      ),
+      explain: same('Look first, then move: that is most of using a terminal.'),
+    }),
+    task({
+      id: 'u1-l4-c9',
+      uses: ['ls-a'],
+      review: true,
+      prompt: same('Something is hidden in your home folder. Find it.'),
+      seed: seedAt(),
+      goal: px({ kind: 'stdoutIncludes', text: '.shellby-secret' }, { kind: 'stdoutIncludes', text: 'shellby-secret.txt' }),
+      solutions: px([['ls -a'], ['ls -la'], ['ls -A']], [['Get-ChildItem -Force'], ['ls -Force'], ['dir -Force']]),
+      hints: px(['Hidden files need a flag.', 'Type `ls -a`.'], ['Hidden files need a parameter.', 'Type `Get-ChildItem -Force`.']),
+      explain: same('Shellby was a snail once. Now you know.'),
+    }),
   ],
 };
 
 export const unit1: Unit = {
   id: 'u1',
   title: 'Getting around',
-  blurb: 'Find out where you are and move between folders.',
-  lessons: [unit1Lesson1, unit1Lesson2],
+  blurb: 'Meet the terminal, find out where you are, and move between folders.',
+  lessons: [unit1Lesson1, unit1Lesson2, unit1Lesson3, unit1Lesson4],
 };
