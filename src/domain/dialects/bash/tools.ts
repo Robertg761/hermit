@@ -334,6 +334,24 @@ export const posixTools = (flavor: Flavor): Readonly<Record<string, CommandHandl
     return result({ ...state, processes: state.processes.filter((p) => !victims.includes(p)) }, { stderr, exitCode: victims.length > 0 && denied.length === 0 ? 0 : 1 });
   });
 
+  /** `killall name`: stop every process with exactly that name. */
+  const killall: CommandHandler = (args, input, state, ctx) => {
+    const names = args.filter((a) => !a.startsWith('-'));
+    if (names.length === 0) return result(state, { stderr: gnu ? 'killall: no process name specified' : 'usage: killall [-l] [-v] [-m] [-signal] procname ...', exitCode: 1 });
+    let s = state;
+    const errs: string[] = [];
+    for (const name of names) {
+      if (!s.processes.some((p) => p.name === name)) {
+        errs.push(gnu ? `${name}: no process found` : `No matching processes belonging to you were found`);
+        continue;
+      }
+      const r = pkill(['-x', name], input, s, ctx);
+      s = r.state;
+      if (r.stderr) errs.push(r.stderr);
+    }
+    return result(s, { stderr: errs.join('\n'), exitCode: errs.length > 0 ? 1 : 0 });
+  };
+
   // ---------- permissions ----------
 
   const chmod: CommandHandler = (args, _input, state) => {
@@ -345,6 +363,7 @@ export const posixTools = (flavor: Flavor): Readonly<Record<string, CommandHandl
     if (/^[ugoa]*\+[rwx]*x[rwx]*$/.test(mode)) executable = true;
     else if (/^[ugoa]*-[rwx]*x[rwx]*$/.test(mode)) executable = false;
     else if (/^[0-7]{3,4}$/.test(mode)) executable = (Number(mode.slice(-3, -2)) & 1) === 1;
+    else if (/^[ugoa]*=[rwx]*$/.test(mode)) executable = mode.includes('x');
     else if (/^[ugoa]*[+-=][rwx]+$/.test(mode)) executable = null;
     else return result(state, { stderr: gnu ? `chmod: invalid mode: ${q(mode)}\nTry 'chmod --help' for more information.` : `chmod: Invalid file mode: ${mode}`, exitCode: 1 });
     let root = state.root;
@@ -361,7 +380,7 @@ export const posixTools = (flavor: Flavor): Readonly<Record<string, CommandHandl
     return result({ ...state, root }, { stderr: errs.join('\n'), exitCode: errs.length > 0 ? 1 : 0 });
   };
 
-  return { grep, find, head: headTail('head'), tail: headTail('tail'), wc, sort, uniq, ps, pgrep, kill, pkill, chmod };
+  return { grep, find, head: headTail('head'), tail: headTail('tail'), wc, sort, uniq, ps, pgrep, kill, pkill, killall, chmod };
 };
 
 /** Glob for `find -name`: `*`, `?` and `[...]`, matched against the whole name. */
