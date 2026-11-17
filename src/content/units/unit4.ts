@@ -14,6 +14,7 @@ const SERVER_LOG =
     '08:31 backup finished',
     '08:40 ERROR crab escaped',
     '08:45 user kim logged in',
+    '08:52 ERROR seagull spotted',
     '09:00 server stopped',
   ].join('\n') + '\n';
 
@@ -54,12 +55,12 @@ export const unit4Lesson1: Lesson = {
       card: px(
         {
           title: 'The pipe: |',
-          body: 'The `|` key (a **pipe**) takes what one command prints and feeds it into the next one, instead of the screen. Here `cat` reads the file, and `grep` keeps only the crab lines.',
+          body: 'What a command prints is its **output**. The `|` (a **pipe**) feeds that output into the next command instead of the screen. Here `cat` reads the file, and `grep` keeps only the crab lines. (On most keyboards, `|` is Shift and the `\\` key.)',
           example: 'cat visitors.txt | grep crab',
         },
         {
           title: 'The pipe: |',
-          body: 'The `|` key (a **pipe**) takes what one command outputs and feeds it into the next one. Here `Get-Content` reads the file, and `Select-String` keeps only the crab lines. PowerShell pipes whole **objects**, not just text, so the next command still knows each item\'s details.',
+          body: 'You met the `|` (a **pipe**) in Unit 3. It feeds what one command gives back, its **output**, into the next command instead of the screen. PowerShell sends it as separate items called **objects**: here, one per line of the file. `Select-String` keeps the crab ones.',
           example: 'Get-Content visitors.txt | Select-String crab',
         },
       ),
@@ -76,19 +77,19 @@ export const unit4Lesson1: Lesson = {
     pick({
       id: 'u4-l1-c3',
       uses: ['pipe'],
-      prompt: same('What does the | in a command do?'),
-      options: same(['Sends one command\'s output into the next command', 'Saves the output to a file', 'Runs two commands at the same time, side by side']),
+      prompt: same('What does the `|` in a command do?'),
+      options: same(['Sends one command\'s output into the next command', 'Saves the output to a file', 'Means "or": runs one command or the other']),
       answer: same(0),
-      reasons: same(['Right: output in one end, out the other.', 'That is a different symbol, coming up next lesson.', 'They are joined: the second one reads what the first one prints.']),
+      reasons: same(['Right: output goes in one end and comes out in the next command.', 'Saving uses a different symbol. It is coming up next lesson.', 'Not in the terminal. `|` joins two commands: the second one reads what the first one gives back.']),
       explain: same('Think of a real pipe: what comes out of the first command flows into the second.'),
     }),
     task({
       id: 'u4-l1-c4',
       uses: ['pipe', 'grep', 'wc'],
       openHint: true,
-      prompt: same('How many ERROR lines are in logs/server.log? Print just the number, not the lines.'),
+      prompt: px('How many ERROR lines are in logs/server.log? Show just the number, not the lines.', 'How many ERROR lines are in logs/server.log? Count them, without showing the lines.'),
       seed,
-      goal: all(out('3'), notOut('ERROR')),
+      goal: all(out('4'), notOut('ERROR')),
       solutions: px(
         [['grep ERROR logs/server.log | wc -l'], ['cat logs/server.log | grep ERROR | wc -l']],
         [['Select-String ERROR logs\\server.log | Measure-Object'], ['Get-Content logs\\server.log | Select-String ERROR | Measure-Object']],
@@ -97,13 +98,16 @@ export const unit4Lesson1: Lesson = {
         ['Find the ERROR lines, then pipe them into a line counter.', 'Type `grep ERROR logs/server.log | wc -l`.'],
         ['Find the ERROR lines, then pipe them into Measure-Object to count them.', 'Type `Select-String ERROR logs\\server.log | Measure-Object`.'],
       ),
-      explain: px('3 errors. `wc -l` counted the lines grep handed it.', '3 errors. Measure-Object counted the matches Select-String handed it.'),
+      explain: px(
+        '4 errors. `wc -l` counted the lines grep handed it.',
+        '4 errors. Select-String sent each match down the pipe as one object, and Measure-Object counted them. The answer is on the Count line. (`Measure-Object -Line` works too.)',
+      ),
     }),
     task({
       id: 'u4-l1-c5',
       uses: ['find'],
       review: true,
-      prompt: same('Find every .png file in the project.'),
+      prompt: same('Herme lost track of his pictures. Find every .png file, in every folder.'),
       seed,
       goal: all(out('sunset.png'), out('crab.png')),
       solutions: px([['find . -name "*.png"']], [['Get-ChildItem -Recurse -Filter *.png']]),
@@ -118,7 +122,7 @@ export const unit4Lesson1: Lesson = {
       card: px(
         {
           title: 'sort: put lines in order',
-          body: '`sort` prints a file\'s lines in alphabetical order. It does not change the file, it only changes what you see.',
+          body: '`sort` prints a file\'s lines in alphabetical order. It does not change the file, it only changes what you see. You can also pipe lines into it.',
           example: 'sort visitors.txt',
         },
         {
@@ -135,7 +139,7 @@ export const unit4Lesson1: Lesson = {
       seed,
       goal: same(out(SORTED)),
       template: px('cat visitors.txt | ___', 'Get-Content visitors.txt | ___'),
-      options: px(['wc', 'sort', 'grep', 'head'], ['Measure-Object', 'Sort-Object', 'Select-String', 'Set-Content']),
+      options: px(['wc', 'sort', 'grep', 'head'], ['Measure-Object', 'Sort-Object', 'Select-String', 'Get-ChildItem']),
       answer: same(1),
       hints: same(['Which one puts things in order?']),
       explain: same('All the crabs line up together now, then the fish.'),
@@ -173,6 +177,7 @@ export const unit4Lesson1: Lesson = {
     task({
       id: 'u4-l1-c10',
       uses: ['sort'],
+      openHint: true,
       prompt: same('Herme wants the visitor list in order. Show it sorted.'),
       seed,
       goal: same(out(SORTED)),
@@ -210,12 +215,12 @@ export const unit4Lesson2: Lesson = {
       card: px(
         {
           title: 'Save output with >',
-          body: '`>` sends what a command prints **into a file** instead of the screen. If the file exists, it is **replaced**. Nothing prints, because it all went into the file.',
+          body: '`>` (an arrow) sends what a command prints **into a file** instead of the screen. If the file already exists, it is **replaced**. Nothing shows on screen, because it all went into the file.',
           example: 'grep ERROR logs/server.log > errors.txt',
         },
         {
           title: 'Save output with >',
-          body: '`>` sends what a command outputs **into a file** instead of the screen. If the file exists, it is **replaced**. Nothing prints, because it all went into the file.',
+          body: '`>` (an arrow) sends a command\'s output **into a file** instead of the screen. The file gets the same text you would have seen. If the file already exists, it is **replaced**.',
           example: 'Select-String ERROR logs\\server.log > errors.txt',
         },
       ),
@@ -223,7 +228,7 @@ export const unit4Lesson2: Lesson = {
     typeAlong({
       id: 'u4-l2-c2',
       uses: ['redirect'],
-      prompt: same('Save the ERROR lines into a new file called errors.txt.'),
+      prompt: same('Save the ERROR lines of the server log into a new file called errors.txt.'),
       seed,
       goal: same(file('errors.txt', 'crab escaped')),
       line: px('grep ERROR logs/server.log > errors.txt', 'Select-String ERROR logs\\server.log > errors.txt'),
@@ -232,11 +237,11 @@ export const unit4Lesson2: Lesson = {
     pick({
       id: 'u4-l2-c3',
       uses: ['redirect'],
-      prompt: same('You run a command with > at the end. Where does its output go?'),
+      prompt: same('You add `> notes.txt` to the end of a command. Where does its output go?'),
       options: same(['Into the file, and nothing shows on screen', 'On screen, and also into the file', 'Nowhere: > throws it away']),
       answer: same(0),
-      reasons: same(['Right.', 'It goes only into the file. To see it, open the file.', 'It is kept, just in the file.']),
-      explain: same('To check what was saved, print the file.'),
+      reasons: same(['Right.', 'It goes only into the file. To see it, print the file.', 'It is kept, just in the file.']),
+      explain: px('To check what was saved, print the file with `cat`.', 'To check what was saved, print the file with `Get-Content`.'),
     }),
     task({
       id: 'u4-l2-c4',
@@ -285,8 +290,8 @@ export const unit4Lesson2: Lesson = {
       seed: same(withErrors),
       command: px(['grep WARNING logs/server.log > errors.txt', 'cat errors.txt'], ['Select-String WARNING logs\\server.log > errors.txt', 'Get-Content errors.txt']),
       options: px(
-        ['08:12 WARNING slow response', '08:04 ERROR disk almost full', 'errors.txt'],
-        ['logs\\server.log:4:08:12 WARNING slow response', '08:04 ERROR disk almost full', 'errors.txt'],
+        ['08:12 WARNING slow response', '08:04 ERROR disk almost full', 'Both: the ERROR line, then the WARNING line'],
+        ['logs\\server.log:4:08:12 WARNING slow response', '08:04 ERROR disk almost full', 'Both: the ERROR line, then the WARNING line'],
       ),
       answer: same(0),
       hints: same(['One arrow replaces the whole file.']),
@@ -299,7 +304,7 @@ export const unit4Lesson2: Lesson = {
       seed: same(withErrors),
       goal: all(file('errors.txt', 'disk almost full'), file('errors.txt', 'slow response')),
       template: px('grep WARNING logs/server.log ___ errors.txt', 'Select-String WARNING logs\\server.log ___ errors.txt'),
-      options: same(['>', '>>', '|', '&&']),
+      options: same(['>', '>>', '|']),
       answer: same(1),
       hints: same(['One arrow replaces. Two arrows add.']),
       explain: same('Both lines are in errors.txt now.'),
@@ -326,6 +331,7 @@ export const unit4Lesson2: Lesson = {
     task({
       id: 'u4-l2-c10',
       uses: ['append'],
+      openHint: true,
       prompt: same('The backup finished, and Herme wants that on record too. Add the backup line from logs/server.log to errors.txt without losing what is there.'),
       seed: same(withErrors),
       goal: all(file('errors.txt', 'disk almost full'), file('errors.txt', 'backup finished')),
@@ -360,11 +366,18 @@ export const unit4Lesson3: Lesson = {
       teaches: ['chain'],
       uses: ['mkdir', 'cd'],
       seed,
-      card: same({
-        title: 'Run one thing, then another: &&',
-        body: '`&&` joins two commands. The second one runs **only if the first one worked**. Here, `cd` only happens if the folder was made.',
-        example: 'mkdir trip && cd trip',
-      }),
+      card: px(
+        {
+          title: 'Run one thing, then another: &&',
+          body: '`&&` joins two commands. The second one runs **only if the first one worked**. Here, `cd` only happens if the folder was made.',
+          example: 'mkdir trip && cd trip',
+        },
+        {
+          title: 'Run one thing, then another: &&',
+          body: '`&&` joins two commands. The second one runs **only if the first one worked**. Here, `cd` only happens if the folder was made. (`&&` needs PowerShell 7. The older Windows PowerShell 5.1 does not know it.)',
+          example: 'mkdir trip && cd trip',
+        },
+      ),
     }),
     typeAlong({
       id: 'u4-l3-c2',
@@ -378,11 +391,11 @@ export const unit4Lesson3: Lesson = {
     pick({
       id: 'u4-l3-c3',
       uses: ['chain'],
-      prompt: same('There is no folder called nowhere. What happens when you run cd nowhere && ls ?'),
+      prompt: same('There is no folder called nowhere. What happens when you run `cd nowhere && ls`?'),
       options: same(['cd fails, so ls never runs', 'cd fails, but ls runs anyway', 'Both run at the same time']),
       answer: same(0),
-      reasons: same(['Right: && stops at the first failure.', 'That is what `;` does. `&&` waits to see if the first one worked.', 'They run in order: first, then (maybe) second.']),
-      explain: same('&& is a safety catch: no point listing a folder you never got into.'),
+      reasons: same(['Right: `&&` stops at the first failure.', 'No: `&&` checks that the first one worked before it runs the second.', 'They run in order: first, then (maybe) second.']),
+      explain: same('`&&` is a safety catch: no point listing a folder you never got into.'),
     }),
     task({
       id: 'u4-l3-c4',
@@ -399,11 +412,11 @@ export const unit4Lesson3: Lesson = {
       id: 'u4-l3-c5',
       uses: ['redirect'],
       review: true,
-      prompt: same('Save the ERROR lines of logs/server.log into a new file called errors.txt.'),
+      prompt: same('Save the WARNING lines of logs/server.log into a new file called warnings.txt.'),
       seed,
-      goal: same(file('errors.txt', 'shell not found')),
-      solutions: px([['grep ERROR logs/server.log > errors.txt']], [['Select-String ERROR logs\\server.log > errors.txt']]),
-      hints: px(['Search, then send it into a file with one arrow.', 'Type `grep ERROR logs/server.log > errors.txt`.'], ['Search, then send it into a file with one arrow.', 'Type `Select-String ERROR logs\\server.log > errors.txt`.']),
+      goal: same(file('warnings.txt', 'slow response')),
+      solutions: px([['grep WARNING logs/server.log > warnings.txt']], [['Select-String WARNING logs\\server.log > warnings.txt']]),
+      hints: px(['Search, then send it into a file with one arrow.', 'Type `grep WARNING logs/server.log > warnings.txt`.'], ['Search, then send it into a file with one arrow.', 'Type `Select-String WARNING logs\\server.log > warnings.txt`.']),
       explain: same('Saved. Nothing printed, as expected.'),
     }),
     learn({
@@ -419,7 +432,7 @@ export const unit4Lesson3: Lesson = {
         },
         {
           title: 'Count each kind: Group-Object',
-          body: '`Group-Object` gathers equal things into groups. The **Count** column says how many are in each.',
+          body: '`Group-Object` gathers equal things into groups. The **Count** column says how many are in each. No need to sort first.',
           example: 'Get-Content visitors.txt | Group-Object',
         },
       ),
@@ -446,9 +459,9 @@ export const unit4Lesson3: Lesson = {
       answer: same(0),
       reasons: px(
         ['Right: sort puts the crabs side by side so uniq can count them together.', 'It gives no error. It just counts the same crab in several places.', 'Speed is not the reason. Without sort, the counts come out wrong.'],
-        ['Right.', 'That would be Length.', 'Group-Object does not track line numbers.'],
+        ['Right.', 'No: Group-Object counts things, not letters.', 'Group-Object does not track line numbers.'],
       ),
-      explain: px('Unsorted, uniq -c would print crab 1, fish 1, crab 1...', 'Count is the size of each group.'),
+      explain: px('Unsorted, uniq -c would print 1 crab, 1 fish, 1 crab, and so on.', 'Count is the size of each group.'),
     }),
     fill({
       id: 'u4-l3-c9',
@@ -457,7 +470,7 @@ export const unit4Lesson3: Lesson = {
       seed,
       goal: all(out('starfish'), file('sorted.txt', SORTED)),
       template: px('sort visitors.txt > sorted.txt ___ cat sorted.txt', 'Get-Content visitors.txt | Sort-Object > sorted.txt ___ Get-Content sorted.txt'),
-      options: same(['>', '&&', '>>', '||']),
+      options: same(['>', '&&', '>>']),
       answer: same(1),
       hints: same(['You want: do this, then do that.']),
       explain: same('Saved and shown, in one line.'),
@@ -479,11 +492,12 @@ export const unit4Lesson3: Lesson = {
           ['|', 'Feed into the next command'],
         ],
       ),
-      explain: same('That is Unit 4. You can now build your own little machines out of commands.'),
+      explain: same('Pipes, arrows and `&&`: that is how small commands team up into little machines.'),
     }),
     task({
       id: 'u4-l3-c11',
       uses: ['count'],
+      openHint: true,
       prompt: same('Which visitor came most often? Count each kind of visitor.'),
       seed,
       goal: same(out('3 crab')),
@@ -498,12 +512,12 @@ export const unit4Lesson3: Lesson = {
       id: 'u4-l3-c12',
       uses: ['pipe', 'wc'],
       review: true,
-      prompt: same('How many photos are in the photos folder? Print just the number.'),
+      prompt: px('How many photos are in the photos folder? Show just the number.', 'How many photos are in the photos folder? Count them, without listing them.'),
       seed,
       goal: all(out('4'), notOut('png')),
       solutions: px([['ls photos | wc -l']], [['Get-ChildItem photos | Measure-Object']]),
       hints: px(['List the folder, pipe it into a line counter.', 'Type `ls photos | wc -l`.'], ['List the folder, pipe it into Measure-Object.', 'Type `Get-ChildItem photos | Measure-Object`.']),
-      explain: same('4 photos.'),
+      explain: px('4 photos. Into a pipe, `ls` gives one name per line, and `wc -l` counted the lines.', '4 photos. Get-ChildItem sent one object per file down the pipe, and Measure-Object counted them.'),
     }),
   ],
 };
