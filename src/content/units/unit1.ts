@@ -667,16 +667,20 @@ export const unit1Lesson5: Lesson = {
     }),
     task({
       id: 'u1-l5-c7',
-      uses: ['history', 'ls'],
+      uses: ['history', 'ls', 'errors'],
       openHint: true,
       prompt: px(
-        'List the photos folder with `ls photos`. Then press ↑ and Enter to run it again.',
-        'List the photos folder with `Get-ChildItem photos`. Then press ↑ and Enter to run it again.',
+        'Herme typed this with a typo. Press Enter to see the error. Then press ↑ to bring the line back, add the missing `s`, and press Enter.',
+        'Herme typed this with a typo. Press Enter to see the error. Then press ↑ to bring the line back, add the missing `s`, and press Enter.',
       ),
       seed: seedAt(),
+      prefill: px('ls photo', 'Get-ChildItem photo'),
       goal: same({ kind: 'stdoutIncludes', text: 'tidepool.jpg' }),
       solutions: px([['ls photos']], [['Get-ChildItem photos'], ['ls photos']]),
-      hints: px(['Type `ls photos` and press Enter first.', 'Then press the ↑ key and Enter.'], ['Type `Get-ChildItem photos` and press Enter first.', 'Then press the ↑ key and Enter.']),
+      hints: px(
+        ['Press the ↑ key: `ls photo` comes back.', 'Type `s` at the end so it says `ls photos`, then press Enter.'],
+        ['Press the ↑ key: `Get-ChildItem photo` comes back.', 'Type `s` at the end so it says `Get-ChildItem photos`, then press Enter.'],
+      ),
       explain: same('From now on, when a command almost worked, press ↑ and fix it instead of typing it all again.'),
     }),
     match({

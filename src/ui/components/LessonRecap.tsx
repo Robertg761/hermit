@@ -23,7 +23,9 @@ export const recapItems = (lesson: Lesson, os: OS): readonly RecapItem[] =>
     .filter((c) => c.type === 'learn' && c.card !== undefined)
     .map((c) => {
       const card = c.card?.[os];
-      return { title: card?.title ?? '', ...(card?.example !== undefined ? { example: card.example } : {}) };
+      // The errors card's example is a deliberate typo, not something to try.
+      const example = (c.teaches ?? []).includes('errors') ? undefined : card?.example;
+      return { title: card?.title ?? '', ...(example !== undefined ? { example } : {}) };
     })
     .filter((item) => item.title !== '');
 
