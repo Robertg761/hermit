@@ -53,7 +53,7 @@ export const decodeError = (os: OS, stderr: string, isCommand: (name: string) =>
     return `There's no command called \`${notFound}\`. Check the spelling.`;
   }
 
-  if (/unexpected EOF while looking for matching|unmatched [\"']|The string is missing the terminator/.test(stderr)) {
+  if (/unexpected EOF while looking for matching|unmatched ["']|The string is missing the terminator/.test(stderr)) {
     return 'A quote was opened but never closed. Quotes come in pairs, like `"my file.txt"`.';
   }
 
