@@ -6,6 +6,10 @@ import {
   completeLesson,
   currentStreak,
   dayKey,
+  findSecret,
+  finishedUnits,
+  playableLessons,
+  unlockUnit,
   streakDoneToday,
   streakLost,
   trackFor,
@@ -15,7 +19,7 @@ import {
 import type { OS } from './domain/types';
 import { createLocalStore } from './providers/storage';
 import { pickLine } from './ui/mascot/lines';
-import type { ShellbyMood } from './ui/mascot/Shellby';
+import { SHELLS, type ShellKind, type ShellbyMood } from './ui/mascot/Shellby';
 import { detectOs } from './ui/os';
 import { Home } from './ui/screens/Home';
 import { Landing } from './ui/screens/Landing';
@@ -27,12 +31,39 @@ type Screen =
   | { readonly kind: 'landing' }
   | { readonly kind: 'home' }
   | { readonly kind: 'lesson'; readonly lessonId: string }
-  | { readonly kind: 'complete'; readonly result: LessonResult; readonly streak: number; readonly extended: boolean; readonly lessonsToday: number }
-  | { readonly kind: 'streak'; readonly streak: number };
+  | {
+      readonly kind: 'complete';
+      readonly result: LessonResult;
+      readonly streak: number;
+      readonly extended: boolean;
+      readonly lessonsToday: number;
+      readonly newShell: ShellKind | null;
+      readonly nextId: string | null;
+    }
+  | { readonly kind: 'streak'; readonly streak: number; readonly nextId: string | null };
 
 const store = createLocalStore();
 const allLessons: readonly LessonData[] = units.flatMap((u) => u.lessons);
 const available = (Object.keys(dialects) as OS[]).filter((os) => dialects[os] !== undefined);
+
+/** Shells earned on a track: the starter, plus one per finished unit, in unit order. */
+const earnedShells = (p: Progress, os: OS): readonly ShellKind[] => {
+  const done = finishedUnits(units, trackFor(p, os));
+  return ['spiral', ...units.flatMap((u, i) => (done.includes(u.id) ? [SHELLS[i + 1]?.kind ?? 'spiral'] : []))];
+};
+
+const wornShell = (p: Progress, os: OS): ShellKind => {
+  const earned = earnedShells(p, os);
+  return earned.find((k) => k === p.wearing) ?? earned[earned.length - 1] ?? 'spiral';
+};
+
+/** The lesson after this one in course order that isn't done yet, else the first one still open. */
+const nextLessonAfter = (p: Progress, os: OS, lessonId: string): string | null => {
+  const track = trackFor(p, os);
+  const i = allLessons.findIndex((l) => l.id === lessonId);
+  const after = allLessons.slice(i + 1).find((l) => !track.completed.includes(l.id) && playableLessons(units, track).includes(l.id));
+  return after?.id ?? playableLessons(units, track)[0] ?? null;
+};
 
 export function App() {
   const [progress, setProgress] = useState<Progress>(() => store.load());
@@ -71,11 +102,26 @@ export function App() {
         lesson={lesson}
         os={os}
         dialect={dialect}
+        shell={wornShell(progress, os)}
+        secrets={progress.secrets}
+        onSecret={(id) => save(findSecret(progress, id))}
         onExit={() => goHome()}
         onComplete={(result) => {
+          const before = earnedShells(progress, os);
           const c = completeLesson(progress, os, result.lessonId, result.xp, today);
-          save(c.progress);
-          setScreen({ kind: 'complete', result, streak: c.streakAfter, extended: c.streakExtended, lessonsToday: c.lessonsToday });
+          const after = earnedShells(c.progress, os);
+          const newShell = after.find((k) => !before.includes(k)) ?? null;
+          const next = newShell === null ? c.progress : { ...c.progress, wearing: newShell };
+          save(next);
+          setScreen({
+            kind: 'complete',
+            result,
+            streak: c.streakAfter,
+            extended: c.streakExtended,
+            lessonsToday: c.lessonsToday,
+            newShell,
+            nextId: nextLessonAfter(next, os, result.lessonId),
+          });
         }}
       />
     );
@@ -88,12 +134,29 @@ export function App() {
         total={screen.result.total}
         streak={screen.streak}
         lessonsToday={screen.lessonsToday}
-        onContinue={() => (screen.extended ? setScreen({ kind: 'streak', streak: screen.streak }) : goHome())}
+        shell={wornShell(progress, os)}
+        newShell={screen.newShell}
+        nextTitle={allLessons.find((l) => l.id === screen.nextId)?.title ?? null}
+        onNext={() => {
+          const nextId = screen.nextId;
+          if (nextId === null) return goHome();
+          if (screen.extended) return setScreen({ kind: 'streak', streak: screen.streak, nextId });
+          setScreen({ kind: 'lesson', lessonId: nextId });
+        }}
+        onContinue={() => (screen.extended ? setScreen({ kind: 'streak', streak: screen.streak, nextId: null }) : goHome())}
       />
     );
   }
   if (screen.kind === 'streak') {
-    return <StreakScreen streak={screen.streak} week={weekStrip(progress.streak, today)} onContinue={() => goHome()} />;
+    const nextId = screen.nextId;
+    return (
+      <StreakScreen
+        streak={screen.streak}
+        week={weekStrip(progress.streak, today)}
+        continueLabel={nextId === null ? 'Continue' : 'Next lesson'}
+        onContinue={() => (nextId === null ? goHome() : setScreen({ kind: 'lesson', lessonId: nextId }))}
+      />
+    );
   }
   if (screen.kind === 'home') {
     const track = trackFor(progress, os);
@@ -103,6 +166,13 @@ export function App() {
         units={units}
         upcoming={upcomingUnits}
         completed={track.completed}
+        playable={playableLessons(units, track)}
+        unlocked={track.unlocked}
+        shell={wornShell(progress, os)}
+        shells={earnedShells(progress, os)}
+        secrets={progress.secrets}
+        onWear={(kind) => save({ ...progress, wearing: kind })}
+        onSkipAhead={(unitId) => save(unlockUnit(progress, os, unitId))}
         xp={track.xp}
         streak={currentStreak(progress.streak, today)}
         streakToday={streakDoneToday(progress.streak, today)}
@@ -120,6 +190,12 @@ export function App() {
       onPick={(picked) => {
         const next = { ...progress, os: picked };
         save(next);
+        // A brand-new visitor goes straight to their first keystroke.
+        const first = allLessons[0];
+        if (progress.os === null && trackFor(next, picked).completed.length === 0 && first !== undefined) {
+          setScreen({ kind: 'lesson', lessonId: first.id });
+          return;
+        }
         goHome(next);
       }}
     />

@@ -47,4 +47,6 @@ export type CommandResult = {
   readonly wrongOs?: string;
   /** A plain-English reading of the error, for beginners. */
   readonly decoded?: string;
+  /** Curiosity, not a mistake: easter eggs and features Hermit doesn't simulate. Never costs a heart. */
+  readonly free?: boolean;
 };

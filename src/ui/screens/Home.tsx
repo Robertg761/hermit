@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Lesson, Unit } from '../../domain/lessons/types';
 import type { OS } from '../../domain/types';
-import { Shellby, type ShellbyMood } from '../mascot/Shellby';
+import { SHELLS, Shellby, type ShellKind, type ShellbyMood } from '../mascot/Shellby';
+import { SECRET_HINTS } from '../mascot/lines';
+import { SECRET_IDS } from '../../domain/dialects/eggs';
 import { StatsBar } from '../components/StatsBar';
 
 type Upcoming = { readonly id: string; readonly title: string; readonly blurb: string };
@@ -11,6 +13,14 @@ type Props = {
   readonly units: readonly Unit[];
   readonly upcoming: readonly Upcoming[];
   readonly completed: readonly string[];
+  /** Lessons that can be started now: the next one, plus the next in any unit skipped ahead to. */
+  readonly playable: readonly string[];
+  readonly unlocked: readonly string[];
+  readonly shell: ShellKind;
+  readonly shells: readonly ShellKind[];
+  readonly secrets: readonly string[];
+  readonly onWear: (kind: ShellKind) => void;
+  readonly onSkipAhead: (unitId: string) => void;
   readonly xp: number;
   readonly streak: number;
   readonly streakToday: boolean;
@@ -25,19 +35,22 @@ const UNIT_COLOURS = ['coral', 'sea', 'violet', 'amber', 'rose', 'teal', 'indigo
 
 type NodeState = 'done' | 'current' | 'locked';
 
-export function Home({ os, units, upcoming, completed, xp, streak, streakToday, greeting, onStart, onSwitchOs }: Props) {
+export function Home({ os, units, upcoming, completed, playable, unlocked, shell, shells, secrets, onWear, onSkipAhead, xp, streak, streakToday, greeting, onStart, onSwitchOs }: Props) {
   const ordered: Lesson[] = units.flatMap((u) => [...u.lessons]);
-  const currentId = ordered.find((l) => !completed.includes(l.id))?.id ?? null;
+  const currentId = playable[0] ?? null;
   const [open, setOpen] = useState<string | null>(null);
   const currentRef = useRef<HTMLButtonElement>(null);
 
+  const currentIndex = currentId === null ? 0 : ordered.findIndex((l) => l.id === currentId);
   useEffect(() => {
-    currentRef.current?.scrollIntoView({ block: 'center', behavior: 'instant' });
+    // Early on, keep Shellby's greeting in view instead of scrolling it under the header.
+    if (currentIndex >= 3) currentRef.current?.scrollIntoView({ block: 'center', behavior: 'instant' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const stateOf = (lesson: Lesson): NodeState => {
     if (completed.includes(lesson.id)) return 'done';
-    if (lesson.id === currentId) return 'current';
+    if (playable.includes(lesson.id)) return 'current';
     return 'locked';
   };
 
@@ -50,10 +63,41 @@ export function Home({ os, units, upcoming, completed, xp, streak, streakToday, 
       <main className="path-wrap">
         {greeting && (
           <div className="greeting">
-            <Shellby mood={greeting.mood} size={84} />
+            <Shellby mood={greeting.mood} size={84} shell={shell} />
             <p className="speech speech-left">{greeting.text}</p>
           </div>
         )}
+        <div className="extras">
+          {shells.length > 1 && (
+            <div className="wardrobe" aria-label="Shellby's shells">
+              <span className="extras-label">Shells</span>
+              {SHELLS.map((sh) =>
+                shells.includes(sh.kind) ? (
+                  <button
+                    key={sh.kind}
+                    type="button"
+                    className={`wardrobe-item${sh.kind === shell ? ' is-worn' : ''}`}
+                    title={`${sh.name}: ${sh.line}`}
+                    aria-pressed={sh.kind === shell}
+                    onClick={() => onWear(sh.kind)}
+                  >
+                    <Shellby size={44} shell={sh.kind} title={sh.name} />
+                  </button>
+                ) : (
+                  <span key={sh.kind} className="wardrobe-item is-locked" title="Finish a unit to earn this shell">
+                    ?
+                  </span>
+                ),
+              )}
+            </div>
+          )}
+          <p className="secrets">
+            <span className="extras-label">Secrets found</span> {secrets.length}/{SECRET_IDS.length}
+            {secrets.length < SECRET_IDS.length && (
+              <span className="secrets-hint"> · {SECRET_HINTS[SECRET_IDS.find((id) => !secrets.includes(id)) ?? ''] ?? ''}</span>
+            )}
+          </p>
+        </div>
         {units.map((unit, ui) => {
           const colour = UNIT_COLOURS[ui % UNIT_COLOURS.length] ?? 'coral';
           const unitDone = unit.lessons.filter((l) => completed.includes(l.id)).length;
@@ -69,6 +113,11 @@ export function Home({ os, units, upcoming, completed, xp, streak, streakToday, 
                   {unitDone}/{unit.lessons.length}
                 </span>
               </div>
+              {ui > 0 && unitDone === 0 && !unlocked.includes(unit.id) && !unit.lessons.some((l) => playable.includes(l.id)) && (
+                <button type="button" className="skip-ahead" onClick={() => onSkipAhead(unit.id)}>
+                  Know this already? Skip ahead
+                </button>
+              )}
               <ol className="path">
                 {unit.lessons.map((lesson, li) => {
                   const state = stateOf(lesson);
@@ -80,7 +129,7 @@ export function Home({ os, units, upcoming, completed, xp, streak, streakToday, 
                       {state === 'current' && !isOpen && <span className="start-bubble">{totalDone === 0 ? 'Start' : 'Next'}</span>}
                       <button
                         type="button"
-                        ref={state === 'current' ? currentRef : undefined}
+                        ref={lesson.id === currentId ? currentRef : undefined}
                         className={`node node-${state}`}
                         disabled={state === 'locked'}
                         aria-label={`${lesson.title}${state === 'done' ? ', complete' : state === 'locked' ? ', locked' : ''}`}
@@ -108,7 +157,7 @@ export function Home({ os, units, upcoming, completed, xp, streak, streakToday, 
                 })}
                 {ui === 0 && (
                   <li className="path-mascot" aria-hidden="true">
-                    <Shellby mood={totalDone === 0 ? 'idle' : 'smug'} size={110} />
+                    <Shellby mood={totalDone === 0 ? 'idle' : 'smug'} size={110} shell={shell} />
                   </li>
                 )}
               </ol>

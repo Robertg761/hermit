@@ -69,7 +69,7 @@ export const step = (attempt: ChallengeAttempt, line: string, dialect: Dialect):
     };
   }
 
-  const failed = result.exitCode !== 0 && result.stderr.length > 0;
+  const failed = result.exitCode !== 0 && result.stderr.length > 0 && result.free !== true;
   const next: ChallengeAttempt = {
     ...attempt,
     machine: result.state,

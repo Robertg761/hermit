@@ -1,6 +1,7 @@
 import type { OS } from '../../domain/types';
 import { Shellby } from '../mascot/Shellby';
 import { OS_LABEL, SHELL_LABEL } from '../os';
+import { ThreeShells } from '../components/ThreeShells';
 
 type Props = {
   readonly detected: OS;
@@ -42,6 +43,7 @@ export function Landing({ detected, current, available, onPick }: Props) {
           );
         })}
       </div>
+      <ThreeShells highlight={highlight} />
       <p className="small-screen-note">Hermit is best on a desktop, with a real keyboard.</p>
       <p className="fineprint">Nothing you type runs on a real machine. It's all a simulated shell.</p>
     </main>

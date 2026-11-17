@@ -16,8 +16,9 @@ import {
 import { HEARTS_PER_LESSON, availableHints } from '../../domain/lessons/runner';
 import type { ChallengeType, Lesson as LessonData } from '../../domain/lessons/types';
 import type { OS } from '../../domain/types';
-import { pickLine, type ShellbyEvent } from '../mascot/lines';
-import { Shellby, type ShellbyMood } from '../mascot/Shellby';
+import { EGG_LINES, pickLine, type ShellbyEvent } from '../mascot/lines';
+import { SECRET_IDS, isSecretId } from '../../domain/dialects/eggs';
+import { Shellby, type ShellKind, type ShellbyMood } from '../mascot/Shellby';
 import { SHELL_LABEL } from '../os';
 import { sounds } from '../sound';
 import { Terminal, type TerminalReply } from '../terminal/Terminal';
@@ -32,6 +33,10 @@ type Props = {
   readonly dialect: Dialect;
   readonly onExit: () => void;
   readonly onComplete: (result: LessonResult) => void;
+  /** Secrets found so far, and a callback when the learner finds an easter egg. */
+  readonly secrets?: readonly string[];
+  readonly onSecret?: (id: string) => void;
+  readonly shell?: ShellKind;
 };
 
 type Speech = { readonly mood: ShellbyMood; readonly text: string };
@@ -61,9 +66,11 @@ const INTRO_LINE: Partial<Record<ChallengeType, string>> = {
   fill: 'One piece is missing. You know the one.',
   predict: 'No typing. What will it print? Guess wisely.',
   fix: 'Someone typed this wrong. Not me. Fix it.',
+  do: 'Your turn. No grey text this time. You can do it.',
+  translate: 'Same job, different shell. Translate it.',
 };
 
-export function Lesson({ lesson, os, dialect, onExit, onComplete }: Props) {
+export function Lesson({ lesson, os, dialect, onExit, onComplete, secrets = [], onSecret, shell = 'spiral' }: Props) {
   const [run, setRun] = useState<LessonRun>(() => startLesson(lesson, os));
   const runRef = useRef(run);
   const [speech, setSpeech] = useState<Speech>(() => say('welcome', 'idle'));
@@ -73,6 +80,7 @@ export function Lesson({ lesson, os, dialect, onExit, onComplete }: Props) {
   const [combo, setCombo] = useState(0);
   const [heartPop, setHeartPop] = useState(0);
   const [ranLines, setRanLines] = useState<readonly ScreenLine[] | null>(null);
+  const [flicker, setFlicker] = useState(false);
 
   const update = (next: LessonRun): void => {
     runRef.current = next;
@@ -89,7 +97,7 @@ export function Lesson({ lesson, os, dialect, onExit, onComplete }: Props) {
     setCombo(nextCombo);
     setFeedback({ kind: 'correct', xp });
     sounds.correct();
-    if (nextCombo >= 3) setSpeech({ mood: 'smug', text: `${nextCombo} in a row! ${pickLine('hatTrick')}` });
+    if (nextCombo === 3 || (nextCombo > 3 && nextCombo % 5 === 0)) setSpeech({ mood: 'smug', text: pickLine('combo').replace('{n}', String(nextCombo)) });
     else setSpeech(clean ? say('solvedClean', 'happy') : say('solved', 'happy'));
   };
 
@@ -116,6 +124,19 @@ export function Lesson({ lesson, os, dialect, onExit, onComplete }: Props) {
       if (effect.kind === 'speak' && 'speechSynthesis' in window) {
         window.speechSynthesis.speak(new SpeechSynthesisUtterance(effect.text));
       }
+    }
+    const egg = r.effects.find((e) => e.kind === 'easterEgg');
+    if (egg?.kind === 'easterEgg' && isSecretId(egg.id) && event.kind !== 'solved') {
+      const fresh = !secrets.includes(egg.id);
+      onSecret?.(egg.id);
+      const found = secrets.length + (fresh ? 1 : 0);
+      const eggLine = EGG_LINES[egg.id];
+      if (eggLine !== undefined) setSpeech({ mood: eggLine.mood, text: fresh ? `${eggLine.text} Secret found: ${found}/${SECRET_IDS.length}.` : eggLine.text });
+      if (egg.id === 'nuke') {
+        setFlicker(true);
+        window.setTimeout(() => setFlicker(false), 700);
+      }
+      return { stdout: r.stdout, stderr: r.stderr, clear };
     }
     const explainer = r.wrongOs ?? r.decoded;
     const note = explainer === undefined ? undefined : `Shellby: ${explainer.replace(/`/g, '')}`;
@@ -216,7 +237,7 @@ export function Lesson({ lesson, os, dialect, onExit, onComplete }: Props) {
     const retry = next.index >= lesson.challenges.length;
     setSpeech({
       mood: retry ? 'smug' : 'idle',
-      text: retry ? 'This one again. You know it now.' : (INTRO_LINE[nextChallengeData.type] ?? pickLine('welcome')),
+      text: retry ? 'This one again. You know it now.' : (INTRO_LINE[nextChallengeData.type] ?? 'Next one.'),
     });
   };
 
@@ -229,9 +250,8 @@ export function Lesson({ lesson, os, dialect, onExit, onComplete }: Props) {
   const retry = (): void => {
     setRestartNotice(false);
     setCombo(0);
-    update(startLesson(lesson, os, runRef.current.restarts));
     setRanLines(null);
-    setSpeech(say('welcome', 'idle'));
+    setSpeech({ mood: 'idle', text: 'Fresh hearts. Same challenge. You know more than last time.' });
   };
 
   const sessionKey = `${run.restarts}:${run.index}`;
@@ -276,7 +296,16 @@ export function Lesson({ lesson, os, dialect, onExit, onComplete }: Props) {
     }
     switch (challenge.type) {
       case 'learn':
-        return <LearnCardView key={sessionKey} os={os} body={challenge.card?.[os].body ?? ''} example={learnExample} onContinue={() => handleCard()} />;
+        return (
+          <LearnCardView
+            key={sessionKey}
+            os={os}
+            body={challenge.card?.[os].body ?? ''}
+            example={learnExample}
+            {...((challenge.teaches ?? []).includes('prompt') ? { anatomy: dialect.prompt(run.attempt.machine) } : {})}
+            onContinue={() => handleCard()}
+          />
+        );
       case 'match':
         return <MatchCard key={sessionKey} id={challenge.id} pairs={challenge.pairs?.[os] ?? []} onDone={(m) => handleCard(m)} />;
       case 'build':
@@ -321,7 +350,7 @@ export function Lesson({ lesson, os, dialect, onExit, onComplete }: Props) {
   };
 
   return (
-    <main className={`lesson os-theme-${os}`}>
+    <main className={`lesson os-theme-${os}${flicker ? ' is-flicker' : ''}`}>
       <header className="lesson-top">
         <button type="button" className="icon-button" onClick={onExit} aria-label="Leave lesson">
           ✕
@@ -359,7 +388,7 @@ export function Lesson({ lesson, os, dialect, onExit, onComplete }: Props) {
           <div className="speech">
             <Markdownish text={speech.text} />
           </div>
-          <Shellby mood={speech.mood} size={150} />
+          <Shellby mood={speech.mood} size={150} shell={shell} />
           {hintsShown > 0 && (
             <ol className="hints">
               {hints.slice(0, hintsShown).map((h) => (
@@ -412,10 +441,10 @@ export function Lesson({ lesson, os, dialect, onExit, onComplete }: Props) {
       {restartNotice && (
         <div className="modal-backdrop">
           <div className="modal" role="alertdialog" aria-labelledby="restart-title">
-            <Shellby mood="sad" size={140} />
+            <Shellby mood="sad" size={140} shell={shell} />
             <h3 id="restart-title">Out of hearts</h3>
-            <p>No timers, no waiting. The lesson starts over from the first challenge.</p>
-            <ContinueButton onClick={retry} label="Try again" tone="correct" />
+            <p>No timers, no waiting. Shellby refilled your hearts, and you pick up right here. (This lesson can't be Flawless now.)</p>
+            <ContinueButton onClick={retry} label="Keep going" tone="correct" />
           </div>
         </div>
       )}

@@ -7,6 +7,7 @@ type Props = {
   readonly streak: number;
   readonly week: readonly { readonly day: string; readonly done: boolean }[];
   readonly onContinue: () => void;
+  readonly continueLabel?: string;
 };
 
 const LINES: Record<string, string> = {
@@ -15,7 +16,7 @@ const LINES: Record<string, string> = {
   more: 'Look at that streak. Do not break it. I will know.',
 };
 
-export function StreakScreen({ streak, week, onContinue }: Props) {
+export function StreakScreen({ streak, week, onContinue, continueLabel = 'Continue' }: Props) {
   useEffect(() => sounds.streak(), []);
   const [line] = useState(() => (streak <= 1 ? LINES['first'] : streak === 2 ? LINES['two'] : LINES['more']));
   const letters = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -43,7 +44,7 @@ export function StreakScreen({ streak, week, onContinue }: Props) {
         <p className="speech speech-left">{line}</p>
       </div>
       <button type="button" className="primary-button wide" onClick={onContinue} autoFocus>
-        Continue
+        {continueLabel}
       </button>
     </main>
   );

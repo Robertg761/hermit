@@ -61,6 +61,17 @@ const solvedRun = (run: LessonRun, attempt: ChallengeAttempt): { run: LessonRun;
   return { run: { ...run, attempt, xp: run.xp + xp, clean: run.clean + (clean ? 1 : 0) }, xp };
 };
 
+/**
+ * Out of hearts: refill them and retry the current challenge from scratch.
+ * No timers and no restart from step 1. The cost is the lesson's Flawless result.
+ */
+export const refillAtCurrent = (run: LessonRun): LessonRun => ({
+  ...run,
+  hearts: HEARTS_PER_LESSON,
+  restarts: run.restarts + 1,
+  attempt: startChallenge(run.attempt.challenge, run.os),
+});
+
 const loseHeart = (run: LessonRun): LessonRun | null => {
   const hearts = run.hearts - 1;
   return hearts <= 0 ? null : { ...run, hearts };
@@ -79,7 +90,7 @@ export const submitLine = (run: LessonRun, line: string, dialect: Dialect): { ru
   const lostHeart = !forgiving && (s.outcome === 'error' || s.outcome === 'protected');
   const after = lostHeart ? loseHeart(run) : run;
   if (after === null) {
-    return { run: startLesson(run.lesson, run.os, run.restarts + 1), event: { kind: 'outOfHearts', step: s } };
+    return { run: refillAtCurrent(run), event: { kind: 'outOfHearts', step: s } };
   }
   if (s.outcome === 'solved') {
     const r = solvedRun(after, s.attempt);
@@ -102,7 +113,7 @@ export const answer = (run: LessonRun, correct: boolean): AnswerResult => {
     return { run: r.run, correct, event: 'solved', xp: r.xp };
   }
   const after = loseHeart(run);
-  if (after === null) return { run: startLesson(run.lesson, run.os, run.restarts + 1), correct, event: 'outOfHearts', xp: 0 };
+  if (after === null) return { run: refillAtCurrent(run), correct, event: 'outOfHearts', xp: 0 };
   const attempt = { ...run.attempt, solved: true, lostHeart: true, failures: run.attempt.failures + 1 };
   return { run: { ...after, attempt }, correct, event: 'wrong', xp: 0 };
 };

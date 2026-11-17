@@ -3,6 +3,7 @@ import { bash } from './bash';
 import type { Dialect } from './dialect';
 import { powershell } from './powershell';
 import { decodeError } from './error-decoder';
+import { runEgg } from './eggs';
 import { explainWrongOs } from './wrong-os';
 import { zsh } from './zsh';
 
@@ -14,11 +15,19 @@ const isCommand = (d: Dialect, name: string): boolean => {
   return name in d.commands || name in d.aliases;
 };
 
-/** Add the wrong-OS explanation to failed lines that look like another shell's habit. */
+const NOT_SIMULATED = /Hermit doesn't simulate|are not simulated/;
+
+/**
+ * Easter eggs first, then the dialect. Failed lines get the wrong-OS explanation
+ * or a plain-English reading. Eggs and unsimulated features are marked free.
+ */
 const withWrongOs = (d: Dialect): Dialect => ({
   ...d,
   run: (line, state) => {
-    const r = d.run(line, state);
+    const egg = runEgg(d.os, line, state);
+    if (egg !== undefined) return { ...egg, free: true };
+    const raw = d.run(line, state);
+    const r = raw.effects.some((e) => e.kind === 'easterEgg') || NOT_SIMULATED.test(raw.stderr) ? { ...raw, free: true } : raw;
     if (r.exitCode === 0) return r;
     const wrongOs = r.wrongOs ?? explainWrongOs(d.os, line);
     if (wrongOs !== undefined) return { ...r, wrongOs };

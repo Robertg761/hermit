@@ -3,7 +3,7 @@ import { Confetti } from '../components/Confetti';
 import { CountUp } from '../components/CountUp';
 import { Flame } from '../components/StatsBar';
 import { pickLine } from '../mascot/lines';
-import { Shellby } from '../mascot/Shellby';
+import { SHELLS, Shellby, type ShellKind } from '../mascot/Shellby';
 import { sounds } from '../sound';
 
 type Props = {
@@ -13,23 +13,40 @@ type Props = {
   readonly streak: number;
   readonly lessonsToday: number;
   readonly onContinue: () => void;
+  readonly shell: ShellKind;
+  /** Set when this lesson finished a unit: Shellby moves into this shell. */
+  readonly newShell: ShellKind | null;
+  readonly nextTitle: string | null;
+  readonly onNext: () => void;
 };
 
-export function LessonComplete({ xp, clean, total, streak, lessonsToday, onContinue }: Props) {
+export function LessonComplete({ xp, clean, total, streak, lessonsToday, onContinue, shell, newShell, nextTitle, onNext }: Props) {
   const [line] = useState(() => (lessonsToday >= 3 ? pickLine('hatTrick') : pickLine('lessonComplete')));
   useEffect(() => sounds.complete(), []);
   const accuracy = total === 0 ? 100 : Math.round((clean / total) * 100);
+  const reward = newShell === null ? undefined : SHELLS.find((x) => x.kind === newShell);
   return (
     <main className="complete">
       <Confetti />
-      <div className="complete-hero">
-        <Shellby mood="happy" size={200} />
+      <div className={`complete-hero${reward !== undefined ? ' is-new-shell' : ''}`}>
+        <Shellby mood="happy" size={200} shell={shell} />
       </div>
-      <h1>Lesson complete!</h1>
-      <p className="complete-line">{line}</p>
+      {reward !== undefined ? (
+        <>
+          <h1>Unit complete!</h1>
+          <p className="complete-line">
+            New shell unlocked: <strong>{reward.name}</strong>. {reward.line} Shellby has already moved in.
+          </p>
+        </>
+      ) : (
+        <>
+          <h1>Lesson complete!</h1>
+          <p className="complete-line">{line}</p>
+        </>
+      )}
       <div className="stats">
         <div className="stat stat-xp">
-          <span className="stat-label">Total XP</span>
+          <span className="stat-label">XP earned</span>
           <span className="stat-value">
             <CountUp to={xp} prefix="+" />
           </span>
@@ -47,9 +64,20 @@ export function LessonComplete({ xp, clean, total, streak, lessonsToday, onConti
           </span>
         </div>
       </div>
-      <button type="button" className="primary-button wide" onClick={onContinue} autoFocus>
-        Continue
-      </button>
+      {nextTitle !== null ? (
+        <>
+          <button type="button" className="primary-button wide" onClick={onNext} autoFocus>
+            Next lesson: {nextTitle}
+          </button>
+          <button type="button" className="link-button" onClick={onContinue}>
+            Back to the path
+          </button>
+        </>
+      ) : (
+        <button type="button" className="primary-button wide" onClick={onContinue} autoFocus>
+          Continue
+        </button>
+      )}
     </main>
   );
 }

@@ -54,7 +54,9 @@ The core loop: pick your OS, open a lesson, type real commands into a fake termi
 - A command that errors (unknown command, wrong syntax for this OS, missing file) costs 1 heart.
 - A successful read-only command (`ls`, `pwd`, `cat`) never costs a heart. Exploring is encouraged.
 - Deleting or overwriting a file the challenge marks as protected costs 1 heart and resets that challenge's filesystem.
-- At 0 hearts the lesson restarts. No timers, no waiting to refill.
+- At 0 hearts the hearts refill and you retry the current challenge; the lesson can no longer be Flawless. No timers, no waiting to refill. (Changed from "the lesson restarts" on Nov 17, approved by Robert.)
+- Easter eggs and features Hermit doesn't simulate never cost a heart, even when they print an error. (Approved Nov 17.)
+- Each unit banner offers "Know this already? Skip ahead", which opens that unit's first lesson without finishing earlier ones. (Approved Nov 17.)
 - After 2 failed attempts on a challenge, a Hint button pulses. After 3, the hint may reveal the answer.
 
 ### Progress

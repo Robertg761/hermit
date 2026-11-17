@@ -1,6 +1,7 @@
 import type { OS } from '../types';
 
-export type Track = { readonly xp: number; readonly completed: readonly string[] };
+/** `unlocked`: units opened early with "Know this already? Skip ahead". */
+export type Track = { readonly xp: number; readonly completed: readonly string[]; readonly unlocked: readonly string[] };
 
 export type Streak = { readonly count: number; readonly lastDay: string | null };
 
@@ -11,6 +12,10 @@ export type Progress = {
   readonly streak: Streak;
   /** Lessons finished today, for "three in a row" reactions. Resets each day. */
   readonly today: { readonly day: string | null; readonly lessons: number };
+  /** Easter eggs found, across all OSes. */
+  readonly secrets: readonly string[];
+  /** The shell Shellby wears, picked from the ones earned. null means the newest. */
+  readonly wearing: string | null;
 };
 
 export const emptyProgress: Progress = {
@@ -19,9 +24,11 @@ export const emptyProgress: Progress = {
   tracks: {},
   streak: { count: 0, lastDay: null },
   today: { day: null, lessons: 0 },
+  secrets: [],
+  wearing: null,
 };
 
-export const emptyTrack: Track = { xp: 0, completed: [] };
+export const emptyTrack: Track = { xp: 0, completed: [], unlocked: [] };
 
 export const trackFor = (p: Progress, os: OS): Track => p.tracks[os] ?? emptyTrack;
 
@@ -74,6 +81,7 @@ export const completeLesson = (p: Progress, os: OS, lessonId: string, xp: number
       tracks: {
         ...p.tracks,
         [os]: {
+          ...track,
           xp: track.xp + xp,
           completed: track.completed.includes(lessonId) ? track.completed : [...track.completed, lessonId],
         },
@@ -108,6 +116,8 @@ export const weekStrip = (s: Streak, today: string): readonly { day: string; don
 };
 
 /** Validate unknown JSON from storage into Progress, falling back field by field. */
+const strings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((c): c is string => typeof c === 'string') : []);
+
 export const parseProgress = (raw: unknown): Progress => {
   if (typeof raw !== 'object' || raw === null) return emptyProgress;
   const r = raw as Record<string, unknown>;
@@ -119,7 +129,8 @@ export const parseProgress = (raw: unknown): Progress => {
       const t = v as Record<string, unknown>;
       tracks[k] = {
         xp: typeof t['xp'] === 'number' ? t['xp'] : 0,
-        completed: Array.isArray(t['completed']) ? t['completed'].filter((c): c is string => typeof c === 'string') : [],
+        completed: strings(t['completed']),
+        unlocked: strings(t['unlocked']),
       };
     }
   }
@@ -138,5 +149,37 @@ export const parseProgress = (raw: unknown): Progress => {
       day: typeof t['day'] === 'string' ? t['day'] : null,
       lessons: typeof t['lessons'] === 'number' ? t['lessons'] : 0,
     },
+    secrets: strings(r['secrets']),
+    wearing: typeof r['wearing'] === 'string' ? r['wearing'] : null,
   };
 };
+
+/** Record an easter egg. Returns the same object when it was already found. */
+export const findSecret = (p: Progress, id: string): Progress => (p.secrets.includes(id) ? p : { ...p, secrets: [...p.secrets, id] });
+
+/** "Know this already? Skip ahead": open a unit early on one OS track. */
+export const unlockUnit = (p: Progress, os: OS, unitId: string): Progress => {
+  const track = trackFor(p, os);
+  if (track.unlocked.includes(unitId)) return p;
+  return { ...p, tracks: { ...p.tracks, [os]: { ...track, unlocked: [...track.unlocked, unitId] } } };
+};
+
+/**
+ * Lessons the learner may start: the first unfinished lesson overall, plus the
+ * first unfinished lesson of each unit they skipped ahead to. Finished ones stay open for practice.
+ */
+export const playableLessons = (units: readonly { readonly id: string; readonly lessons: readonly { readonly id: string }[] }[], track: Track): readonly string[] => {
+  const open: string[] = [];
+  const firstOverall = units.flatMap((u) => u.lessons).find((l) => !track.completed.includes(l.id));
+  if (firstOverall !== undefined) open.push(firstOverall.id);
+  for (const u of units) {
+    if (!track.unlocked.includes(u.id)) continue;
+    const first = u.lessons.find((l) => !track.completed.includes(l.id));
+    if (first !== undefined && !open.includes(first.id)) open.push(first.id);
+  }
+  return open;
+};
+
+/** Units fully finished on a track, in course order. Each one earns Shellby a new shell. */
+export const finishedUnits = (units: readonly { readonly id: string; readonly lessons: readonly { readonly id: string }[] }[], track: Track): readonly string[] =>
+  units.filter((u) => u.lessons.every((l) => track.completed.includes(l.id))).map((u) => u.id);

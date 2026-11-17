@@ -81,7 +81,20 @@ describe('challenge runner', () => {
 });
 
 describe('lesson run', () => {
-  it('restarts the lesson at 0 hearts', () => {
+  it('at 0 hearts, refills them and retries the same challenge', () => {
+    const solved = submitLine(startLesson(lesson, 'linux'), 'rm junk.txt', bash).run;
+    const second = nextChallenge(solved);
+    if (second === null) throw new Error('expected a second challenge');
+    let run = second;
+    for (const bad of ['bad1', 'bad2']) run = submitLine(run, bad, bash).run;
+    const r = submitLine(run, 'bad3', bash);
+    expect(r.event.kind).toBe('outOfHearts');
+    expect(r.run.hearts).toBe(3);
+    expect(r.run.index).toBe(1);
+    expect(r.run.restarts).toBe(1);
+    expect(r.run.attempt.failures).toBe(0);
+  });
+  it('out of hearts on the first challenge stays on it', () => {
     let run = startLesson(lesson, 'linux');
     run = submitLine(run, 'bad1', bash).run;
     run = submitLine(run, 'bad2', bash).run;

@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 import type { OS } from '../../domain/types';
 import { sounds } from '../sound';
 import { Markdownish } from './Markdownish';
+import { parseAnsi } from '../components/ansi';
+import { PromptAnatomy } from '../components/PromptAnatomy';
 
 /** A static terminal screen: prompt, command, output, as on a real terminal. */
 export type ScreenLine = { readonly kind: 'cmd'; readonly prompt: string; readonly text: string } | { readonly kind: 'out' | 'err' | 'note'; readonly text: string };
@@ -17,7 +19,15 @@ export function Screen({ os, lines, children }: { os: OS; lines: readonly Screen
           </div>
         ) : (
           <pre key={i} className={`screen-${l.kind}`}>
-            {l.text}
+            {parseAnsi(l.text).map((sp, j) =>
+              sp.bold || sp.colour !== null ? (
+                <span key={j} className={`ansi${sp.bold ? ' ansi-bold' : ''}${sp.colour !== null ? ` ansi-${sp.colour}` : ''}`}>
+                  {sp.text}
+                </span>
+              ) : (
+                sp.text
+              ),
+            )}
           </pre>
         ),
       )}
@@ -324,12 +334,26 @@ export function FillCard({
 }
 
 /** Learn: a short card with a live example. */
-export function LearnCardView({ os, body, example, onContinue }: { os: OS; body: string; example: readonly ScreenLine[] | null; onContinue: () => void }) {
+export function LearnCardView({
+  os,
+  body,
+  example,
+  anatomy,
+  onContinue,
+}: {
+  os: OS;
+  body: string;
+  example: readonly ScreenLine[] | null;
+  /** The first lesson: show the prompt itself, labelled. */
+  anatomy?: string;
+  onContinue: () => void;
+}) {
   return (
     <div className="learn-card">
       <p className="learn-body">
         <Markdownish text={body} />
       </p>
+      {anatomy !== undefined && <PromptAnatomy os={os} prompt={anatomy} />}
       {example !== null && <Screen os={os} lines={example} />}
       <button
         type="button"

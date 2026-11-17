@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { completeLesson, currentStreak, emptyProgress, parseProgress, streakLost, trackFor, weekStrip } from './progress';
+import { completeLesson, currentStreak, emptyProgress, findSecret, finishedUnits, parseProgress, playableLessons, streakLost, trackFor, unlockUnit, weekStrip } from './progress';
 
 describe('progress', () => {
   it('awards XP per OS and records the lesson once', () => {
     let p = completeLesson(emptyProgress, 'linux', 'u1-l1', 85, '2026-11-16').progress;
     p = completeLesson(p, 'linux', 'u1-l1', 60, '2026-11-16').progress;
-    expect(trackFor(p, 'linux')).toEqual({ xp: 145, completed: ['u1-l1'] });
+    expect(trackFor(p, 'linux')).toEqual({ xp: 145, completed: ['u1-l1'], unlocked: [] });
     expect(trackFor(p, 'windows').xp).toBe(0);
   });
   it('starts and extends a streak once per day', () => {
@@ -40,7 +40,33 @@ describe('progress', () => {
     expect(parseProgress(null)).toEqual(emptyProgress);
     const p = parseProgress({ os: 'linux', tracks: { linux: { xp: 120, completed: ['u1-l1', 3] }, bogus: {} }, streak: { count: 1, lastDay: '2026-11-16' } });
     expect(p.os).toBe('linux');
-    expect(p.tracks.linux).toEqual({ xp: 120, completed: ['u1-l1'] });
+    expect(p.tracks.linux).toEqual({ xp: 120, completed: ['u1-l1'], unlocked: [] });
     expect(p.streak.count).toBe(1);
+  });
+});
+
+describe('secrets, skip ahead and shells', () => {
+  const units = [
+    { id: 'u1', lessons: [{ id: 'a' }, { id: 'b' }] },
+    { id: 'u2', lessons: [{ id: 'c' }, { id: 'd' }] },
+    { id: 'u3', lessons: [{ id: 'e' }] },
+  ];
+  it('records each secret once', () => {
+    const p = findSecret(findSecret(emptyProgress, 'nuke'), 'nuke');
+    expect(p.secrets).toEqual(['nuke']);
+  });
+  it('skip ahead opens the first lesson of the unlocked unit too', () => {
+    const p = unlockUnit(emptyProgress, 'linux', 'u3');
+    expect(playableLessons(units, trackFor(p, 'linux'))).toEqual(['a', 'e']);
+    expect(playableLessons(units, trackFor(emptyProgress, 'linux'))).toEqual(['a']);
+  });
+  it('finished units', () => {
+    const track = { xp: 0, completed: ['a', 'b', 'e'], unlocked: [] };
+    expect(finishedUnits(units, track)).toEqual(['u1', 'u3']);
+  });
+  it('old saves without the new fields still load', () => {
+    const p = parseProgress({ os: 'mac', tracks: { mac: { xp: 5, completed: ['a'] } } });
+    expect(p.secrets).toEqual([]);
+    expect(trackFor(p, 'mac').unlocked).toEqual([]);
   });
 });
