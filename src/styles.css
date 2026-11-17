@@ -544,7 +544,8 @@ code {
     grid-column: 1 / -1;
   }
 
-  .result-sheet {
+  /* .lesson raises specificity so this beats the base rule further down. */
+  .lesson .result-sheet {
     flex-direction: column;
     align-items: stretch;
     margin: 0 -12px;

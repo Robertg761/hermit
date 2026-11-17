@@ -27,12 +27,31 @@ type Props = {
   readonly ghost?: string;
 };
 
+/** Break text at spaces so narrow terminals don't split words. */
+const wrapWords = (text: string, cols: number): string =>
+  text
+    .split('\n')
+    .map((line) => {
+      const out: string[] = [];
+      let cur = '';
+      for (const word of line.split(' ')) {
+        if (cur !== '' && cur.length + 1 + word.length > cols) {
+          out.push(cur);
+          cur = word;
+        } else cur = cur === '' ? word : `${cur} ${word}`;
+      }
+      out.push(cur);
+      return out.join('\n');
+    })
+    .join('\n');
+
 const toCrlf = (s: string): string => s.replace(/\r?\n/g, '\r\n');
 const ESC = String.fromCharCode(27);
 
 const DIM = `${ESC}[2m`;
 const RED = `${ESC}[31m`;
 const RESET = `${ESC}[0m`;
+const ANSI = new RegExp(`${ESC}\\[[0-9;]*[A-Za-z]`, 'g');
 
 export function Terminal({ os, sessionKey, prompt, onLine, banner, prefill, disabled, ghost }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -50,18 +69,44 @@ export function Terminal({ os, sessionKey, prompt, onLine, banner, prefill, disa
     ghostRef.current = disabled ? undefined : ghost;
   });
 
+  /** Rows the input line wraps onto: where the cursor sits, and the last row drawn. */
+  const rowsRef = useRef({ cursor: 0, end: 0 });
+
+  /**
+   * Draw the prompt and input line. Long lines wrap onto several rows on narrow screens,
+   * so this climbs back to the line's first row, clears below, and places the cursor by row and column.
+   */
   const redraw = (term: XTerm): void => {
     const p = promptRef.current();
     const e = editorRef.current;
-    term.write(`\r${ESC}[K${p}${e.buffer}`);
     const g = ghostRef.current;
-    if (g !== undefined && e.cursor === e.buffer.length && g.length > e.buffer.length && g.startsWith(e.buffer)) {
-      const rest = g.slice(e.buffer.length);
-      term.write(`${DIM}${rest}${RESET}${ESC}[${rest.length}D`);
+    const showGhost = g !== undefined && e.cursor === e.buffer.length && g.length > e.buffer.length && g.startsWith(e.buffer);
+    const rest = showGhost ? g.slice(e.buffer.length) : '';
+    const up = rowsRef.current.cursor;
+    term.write(`${up > 0 ? `${ESC}[${up}A` : ''}\r${ESC}[J${p}${e.buffer}${rest ? `${DIM}${rest}${RESET}` : ''}`);
+    const cols = Math.max(1, term.cols);
+    const promptLen = p.replace(ANSI, '').length;
+    const total = promptLen + e.buffer.length + rest.length;
+    const end = total === 0 ? 0 : total % cols === 0 ? total / cols - 1 : Math.floor(total / cols);
+    const target = promptLen + e.cursor;
+    let row = Math.floor(target / cols);
+    const col = target % cols;
+    if (row > end) {
+      // The cursor belongs at the start of a row that doesn't exist yet: make it.
+      term.write('\r\n');
+      row = end + 1;
+      rowsRef.current = { cursor: row, end: row };
       return;
     }
-    const back = e.buffer.length - e.cursor;
-    if (back > 0) term.write(`${ESC}[${back}D`);
+    term.write(`${end - row > 0 ? `${ESC}[${end - row}A` : ''}\r${col > 0 ? `${ESC}[${col}C` : ''}`);
+    rowsRef.current = { cursor: row, end };
+  };
+
+  /** Leave the input line: move below its last row, ready for output. */
+  const newline = (term: XTerm): void => {
+    const down = rowsRef.current.end - rowsRef.current.cursor;
+    term.write(`${down > 0 ? `${ESC}[${down}B` : ''}\r\n`);
+    rowsRef.current = { cursor: 0, end: 0 };
   };
 
   // Create the terminal once.
@@ -98,21 +143,24 @@ export function Terminal({ os, sessionKey, prompt, onLine, banner, prefill, disa
             redraw(term);
             break;
           case 'submit': {
-            term.write('\r\n');
+            newline(term);
             const reply = onLineRef.current(action.line);
             if (reply.clear) term.clear();
             if (reply.stdout) term.write(toCrlf(reply.stdout.endsWith('\n') ? reply.stdout : reply.stdout + '\n'));
             if (reply.stderr) term.write(RED + toCrlf(reply.stderr) + RESET + '\r\n');
             if (reply.note) term.write(DIM + toCrlf(reply.note) + RESET + '\r\n');
             if (reply.clear) term.write(`${ESC}[2J${ESC}[H`);
+            rowsRef.current = { cursor: 0, end: 0 };
             redraw(term);
             break;
           }
           case 'cancel':
-            term.write('^C\r\n');
+            term.write('^C');
+            newline(term);
             redraw(term);
             break;
           case 'clearScreen':
+            rowsRef.current = { cursor: 0, end: 0 };
             term.write(`${ESC}[2J${ESC}[H`);
             term.clear();
             redraw(term);
@@ -137,8 +185,9 @@ export function Terminal({ os, sessionKey, prompt, onLine, banner, prefill, disa
     const term = termRef.current;
     if (term === null) return;
     term.reset();
+    rowsRef.current = { cursor: 0, end: 0 };
     editorRef.current = setLine(emptyEditor(editorRef.current.history), prefill ?? '');
-    if (banner) term.write(DIM + toCrlf(banner) + RESET + '\r\n');
+    if (banner) term.write(DIM + toCrlf(wrapWords(banner, term.cols)) + RESET + '\r\n');
     redraw(term);
     term.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -167,6 +167,10 @@ export function Lesson({ lesson, os, dialect, onExit, onComplete, secrets = [], 
         return { stdout: r.stdout, stderr: r.stderr, clear, ...(note ? { note } : {}) };
       }
       setSpeech(lost ? say('error', 'sad') : { mood: 'idle', text: 'See? Nothing broke. Now read what it said, and fix it.' });
+    } else if (r.free === true && explainer !== undefined) {
+      // A real command Hermit doesn't simulate: curiosity, not a mistake.
+      setSpeech({ mood: 'idle', text: explainer });
+      return { stdout: r.stdout, stderr: r.stderr, clear, ...(note ? { note } : {}) };
     } else if (line.trim().length > 0) {
       setSpeech((s) => (s.mood === 'sad' ? { mood: 'idle', text: s.text } : s));
     }

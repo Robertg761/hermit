@@ -304,6 +304,29 @@ const writeContent = (name: 'Set-Content' | 'Add-Content'): Cmdlet => ({
   },
 });
 
+/** `... | Out-File errors.txt`: what `>` does, spelled as a command. */
+const outFile: Cmdlet = {
+  name: 'Out-File',
+  params: [
+    { name: 'FilePath', kind: 'value', position: 0, aliases: ['Path'] },
+    P.literal,
+    { name: 'Append', kind: 'switch' },
+    { name: 'InputObject', kind: 'value', type: 'System.Management.Automation.PSObject' },
+    { name: 'Encoding', kind: 'value' },
+    { name: 'NoNewline', kind: 'switch' },
+    P.force,
+  ],
+  run: (b, input, state) => {
+    const raw = str(b, 'FilePath') ?? str(b, 'LiteralPath');
+    if (raw === undefined) return fail(state, 'Out-File: Cannot process command because of one or more missing mandatory parameters: FilePath.');
+    const objects = b.values['InputObject'] ?? input;
+    const path = resolve(raw, state);
+    const r = writeFile(state.root, path, formatObjects(objects), { append: has(b, 'Append') }, ci);
+    if (!r.ok) return fail(state, `Out-File: Could not find a part of the path '${show(path)}'.`);
+    return { state: { ...state, root: r.value }, out: [], errors: [] };
+  },
+};
+
 const copyItem: Cmdlet = {
   name: 'Copy-Item',
   params: [P.path, P.literal, { name: 'Destination', kind: 'value', position: 1 }, { ...P.recurse }, P.force, { name: 'Container', kind: 'switch' }, P.filter, P.include, P.exclude, P.passThru, P.whatIf, P.confirm],
@@ -846,6 +869,7 @@ export const cmdlets: readonly Cmdlet[] = [
   getContent,
   writeContent('Set-Content'),
   writeContent('Add-Content'),
+  outFile,
   copyItem,
   moveItem,
   renameItem,
