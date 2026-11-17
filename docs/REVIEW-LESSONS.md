@@ -35,16 +35,19 @@ The main kinds of problem, with examples:
 7. **Phone key bar.** On touch screens a row of keys sits under the terminal: Tab, ↑, `-`, `/` (or `\` on Windows), `~`, `.`, `|`, `>` and `"`, the symbols hidden on the second page of a phone keyboard.
 8. **Cheat sheet per unit.** Each unit on the path gets a cheat sheet built from the Learn cards of the lessons you've finished, so it grows as you learn.
 
+## New lesson: Terminal superpowers
+
+Robert approved it on Nov 17. Unit 1 now ends with a fifth lesson, "Terminal superpowers": Tab completion and the up arrow (with Ctrl+C mentioned), on all three OSes. It has a Learn card for each key, a Type along that uses Tab, a folder name long enough to make Tab worth it, a Match, a capstone and two reviews. It was played through in the real UI on Linux and Windows using the actual Tab key.
+
 ## Calls for Robert
 
 These change the spec or the game rules, so they were not built:
 
-1. **A "Terminal superpowers" lesson** (Tab, up arrow for history, Ctrl+C, `clear`, getting help) at the end of Unit 1. No unit teaches these, and they are what make a real terminal bearable. Adds one lesson.
-2. **Spaced-repetition Practice:** a button that replays 6 to 8 challenges from your weakest skills. Should it count for the streak and XP?
-3. **Capstones show the hint from the start,** because PEDAGOGY says the first Do for a skill does. Should capstones be exempt?
-4. **Windows script lesson:** the simulator says PowerShell 7 but starts with scripts blocked, which is really Windows PowerShell 5.1 behaviour. Keep (most beginners hit this error in the built-in PowerShell), or switch the default and reframe the lesson?
-5. **Missing capstones:** Unit 3 Lessons 1 and 2 and Unit 4 Lesson 1 end without a challenge that mixes the new skill with an old one. Adding them makes those lessons 11 challenges.
-6. **Second tries after running out of hearts:** a challenge restarted after hearts run out does not come back as a "Second try", and counts as clean if you then get it right.
+1. **Spaced-repetition Practice:** a button that replays 6 to 8 challenges from your weakest skills. Should it count for the streak and XP?
+2. **Capstones show the hint from the start,** because PEDAGOGY says the first Do for a skill does. Should capstones be exempt?
+3. **Windows script lesson:** the simulator says PowerShell 7 but starts with scripts blocked, which is really Windows PowerShell 5.1 behaviour. Keep (most beginners hit this error in the built-in PowerShell), or switch the default and reframe the lesson?
+4. **Missing capstones:** Unit 3 Lessons 1 and 2 and Unit 4 Lesson 1 end without a challenge that mixes the new skill with an old one. Adding them makes those lessons 11 challenges.
+5. **Second tries after running out of hearts:** a challenge restarted after hearts run out does not come back as a "Second try", and counts as clean if you then get it right.
 
 ## Still open (smaller)
 
