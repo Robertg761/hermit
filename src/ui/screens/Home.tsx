@@ -114,7 +114,7 @@ export function Home({ os, units, upcoming, completed, playable, unlocked, shell
                 </span>
               </div>
               {ui > 0 && unitDone === 0 && !unlocked.includes(unit.id) && !unit.lessons.some((l) => playable.includes(l.id)) && (
-                <button type="button" className="skip-ahead" onClick={() => onSkipAhead(unit.id)}>
+                <button type="button" className="skip-ahead" onClick={() => onSkipAhead(unit.id)} aria-label={`Know ${unit.title} already? Skip ahead`}>
                   Know this already? Skip ahead
                 </button>
               )}

@@ -92,7 +92,7 @@ export const EGG_LINES: Readonly<Record<string, { readonly text: string; readonl
 
 /** A nudge toward one secret the learner hasn't found yet. */
 export const SECRET_HINTS: Readonly<Record<string, string>> = {
-  nuke: 'Try the most famous terrible command. As admin.',
+  nuke: 'Here, and only here, try the most famous terrible command: delete everything, as admin. Never on a real computer.',
   editor: 'Open a text editor from the terminal.',
   fetch: 'Linux people love to show off their system info.',
   sl: 'What happens if you type ls backwards?',

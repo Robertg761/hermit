@@ -18,9 +18,11 @@ type Props = {
   readonly newShell: ShellKind | null;
   readonly nextTitle: string | null;
   readonly onNext: () => void;
+  /** What the lesson taught, and how to try it for real. */
+  readonly recap?: React.ReactNode;
 };
 
-export function LessonComplete({ xp, clean, total, streak, lessonsToday, onContinue, shell, newShell, nextTitle, onNext }: Props) {
+export function LessonComplete({ xp, clean, total, streak, lessonsToday, onContinue, shell, newShell, nextTitle, onNext, recap }: Props) {
   const [line] = useState(() => (lessonsToday >= 3 ? pickLine('hatTrick') : pickLine('lessonComplete')));
   useEffect(() => sounds.complete(), []);
   const accuracy = total === 0 ? 100 : Math.round((clean / total) * 100);
@@ -64,6 +66,7 @@ export function LessonComplete({ xp, clean, total, streak, lessonsToday, onConti
           </span>
         </div>
       </div>
+      {recap}
       {nextTitle !== null ? (
         <>
           <button type="button" className="primary-button wide" onClick={onNext} autoFocus>

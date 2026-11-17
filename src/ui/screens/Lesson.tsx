@@ -23,6 +23,7 @@ import { SHELL_LABEL } from '../os';
 import { sounds } from '../sound';
 import { Terminal, type TerminalReply } from '../terminal/Terminal';
 import { BurrowMap } from '../components/BurrowMap';
+import { completeLine } from '../terminal/complete';
 import { BuildCard, ChoiceCard, FillCard, LearnCardView, MatchCard, outputLines, type ScreenLine } from './cards';
 import { Markdownish } from './Markdownish';
 
@@ -301,6 +302,7 @@ export function Lesson({ lesson, os, dialect, onExit, onComplete, secrets = [], 
             prefill={challenge.prefill?.[os]}
             ghost={challenge.type === 'typeAlong' ? challenge.solutions[os][0]?.[0] : undefined}
             disabled={locked}
+            complete={(line) => completeLine(line, dialect, runRef.current.attempt.machine)}
           />
         </div>
       );
@@ -366,7 +368,7 @@ export function Lesson({ lesson, os, dialect, onExit, onComplete, secrets = [], 
         <button type="button" className="icon-button" onClick={onExit} aria-label="Leave lesson">
           ✕
         </button>
-        <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress * 100)}>
+        <div className="progress" role="progressbar" aria-label="Lesson progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress * 100)}>
           <div className="progress-fill" style={{ width: `${Math.max(progress * 100, 4)}%` }}>
             <span className="progress-shine" />
           </div>

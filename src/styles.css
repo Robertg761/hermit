@@ -2021,3 +2021,43 @@ code {
   margin: 6px 0 0;
   color: var(--muted);
 }
+
+/* ---------- lesson recap ---------- */
+
+.recap {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+  width: min(640px, 100%);
+  margin: 8px 0 4px;
+  text-align: left;
+}
+
+.recap-card {
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+}
+
+.recap-card h2 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+  color: var(--sand);
+}
+
+.recap-card ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.recap-card li,
+.recap-card p {
+  margin: 4px 0;
+  color: var(--text);
+  line-height: 1.45;
+}
+
+.recap-real {
+  border-color: rgb(76 201 214 / 45%);
+}

@@ -25,6 +25,8 @@ type Props = {
   readonly disabled?: boolean;
   /** Type along: grey text shown after what the learner has typed so far. */
   readonly ghost?: string;
+  /** Tab completion: the completed line, and the matches to list on a second Tab. */
+  readonly complete?: (line: string) => { readonly line: string; readonly matches: readonly string[] };
 };
 
 /** Break text at spaces so narrow terminals don't split words. */
@@ -53,7 +55,7 @@ const RED = `${ESC}[31m`;
 const RESET = `${ESC}[0m`;
 const ANSI = new RegExp(`${ESC}\\[[0-9;]*[A-Za-z]`, 'g');
 
-export function Terminal({ os, sessionKey, prompt, onLine, banner, prefill, disabled, ghost }: Props) {
+export function Terminal({ os, sessionKey, prompt, onLine, banner, prefill, disabled, ghost, complete }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<XTerm | null>(null);
   const editorRef = useRef<EditorState>(emptyEditor());
@@ -62,7 +64,11 @@ export function Terminal({ os, sessionKey, prompt, onLine, banner, prefill, disa
   const promptRef = useRef(prompt);
   const disabledRef = useRef(disabled ?? false);
   const ghostRef = useRef(ghost);
+  const completeRef = useRef(complete);
+  /** The line as it was after the last Tab, so a second Tab lists the matches. */
+  const lastTabRef = useRef<string | null>(null);
   useEffect(() => {
+    completeRef.current = complete;
     onLineRef.current = onLine;
     promptRef.current = prompt;
     disabledRef.current = disabled ?? false;
@@ -121,6 +127,7 @@ export function Terminal({ os, sessionKey, prompt, onLine, banner, prefill, disa
       convertEol: false,
       scrollback: 1000,
       allowProposedApi: false,
+      screenReaderMode: true,
       theme: terminalThemes[os],
     });
     const fit = new FitAddon();
@@ -133,8 +140,20 @@ export function Terminal({ os, sessionKey, prompt, onLine, banner, prefill, disa
     const observer = new ResizeObserver(onResize);
     observer.observe(host);
 
+    // Esc lets keyboard users leave the terminal, since Tab now completes names inside it.
+    term.attachCustomKeyEventHandler((ev) => {
+      if (ev.type === 'keydown' && ev.key === 'Escape') {
+        term.blur();
+        const next = document.querySelector<HTMLElement>('.hint-button, .lesson-top .icon-button');
+        next?.focus();
+        return false;
+      }
+      return true;
+    });
+
     const sub = term.onData((data) => {
       if (disabledRef.current) return;
+      if (data !== '\t') lastTabRef.current = null;
       const { state, actions } = applyInput(editorRef.current, data);
       editorRef.current = state;
       for (const action of actions) {
@@ -165,7 +184,25 @@ export function Terminal({ os, sessionKey, prompt, onLine, banner, prefill, disa
             term.clear();
             redraw(term);
             break;
-          case 'tab':
+          case 'tab': {
+            const e = editorRef.current;
+            const done = completeRef.current;
+            if (done === undefined || e.cursor !== e.buffer.length) break;
+            const r = done(e.buffer);
+            if (r.line !== e.buffer) {
+              editorRef.current = setLine(e, r.line);
+              lastTabRef.current = r.line;
+              redraw(term);
+            } else if (r.matches.length > 1 && lastTabRef.current === e.buffer) {
+              newline(term);
+              term.write(toCrlf(wrapWords(r.matches.join('  '), term.cols)) + '\r\n');
+              redraw(term);
+            } else {
+              lastTabRef.current = e.buffer;
+              term.write('\x07');
+            }
+            break;
+          }
           case 'none':
             break;
         }
