@@ -67,7 +67,7 @@ export const posixTools = (flavor: Flavor): Readonly<Record<string, CommandHandl
 
   // ---------- grep ----------
 
-  const grep = withFlags('grep', { short: 'rRinvclhHwF', long: { recursive: 'r', 'ignore-case': 'i', 'line-number': 'n', 'invert-match': 'v', count: 'c', 'files-with-matches': 'l' } }, ({ flags, operands }, state, input) => {
+  const grep = withFlags('grep', { short: 'rRinvclhHwFaIE', long: { recursive: 'r', 'ignore-case': 'i', 'line-number': 'n', 'invert-match': 'v', count: 'c', 'files-with-matches': 'l' } }, ({ flags, operands }, state, input) => {
     const [pattern, ...files] = operands;
     if (pattern === undefined) {
       return result(state, { stderr: gnu ? "Usage: grep [OPTION]... PATTERNS [FILE]...\nTry 'grep --help' for more information." : 'usage: grep [-rinvclhHw] [pattern] [file ...]', exitCode: 2 });
@@ -189,7 +189,9 @@ export const posixTools = (flavor: Flavor): Readonly<Record<string, CommandHandl
       const multi = sources.length + errs.length > 1;
       const parts = sources.map((s, i) => {
         const lines = linesOf(s.text);
-        const slice = cmd === 'head' ? lines.slice(0, count) : lines.slice(Math.max(0, lines.length - count));
+        // `tail -n +11` starts at line 11 instead of counting from the end.
+        const fromStart = cmd === 'tail' && nRaw.startsWith('+');
+        const slice = cmd === 'head' ? lines.slice(0, count) : fromStart ? lines.slice(Math.max(0, count - 1)) : lines.slice(Math.max(0, lines.length - count));
         const header = multi && s.name !== null ? `${i > 0 ? '\n' : ''}==> ${s.name} <==\n` : '';
         return header + joinLines(slice);
       });
@@ -332,6 +334,24 @@ export const posixTools = (flavor: Flavor): Readonly<Record<string, CommandHandl
     return result({ ...state, processes: state.processes.filter((p) => !victims.includes(p)) }, { stderr, exitCode: victims.length > 0 && denied.length === 0 ? 0 : 1 });
   });
 
+  /** `killall name`: stop every process with exactly that name. */
+  const killall: CommandHandler = (args, input, state, ctx) => {
+    const names = args.filter((a) => !a.startsWith('-'));
+    if (names.length === 0) return result(state, { stderr: gnu ? 'killall: no process name specified' : 'usage: killall [-l] [-v] [-m] [-signal] procname ...', exitCode: 1 });
+    let s = state;
+    const errs: string[] = [];
+    for (const name of names) {
+      if (!s.processes.some((p) => p.name === name)) {
+        errs.push(gnu ? `${name}: no process found` : `No matching processes belonging to you were found`);
+        continue;
+      }
+      const r = pkill(['-x', name], input, s, ctx);
+      s = r.state;
+      if (r.stderr) errs.push(r.stderr);
+    }
+    return result(s, { stderr: errs.join('\n'), exitCode: errs.length > 0 ? 1 : 0 });
+  };
+
   // ---------- permissions ----------
 
   const chmod: CommandHandler = (args, _input, state) => {
@@ -343,6 +363,7 @@ export const posixTools = (flavor: Flavor): Readonly<Record<string, CommandHandl
     if (/^[ugoa]*\+[rwx]*x[rwx]*$/.test(mode)) executable = true;
     else if (/^[ugoa]*-[rwx]*x[rwx]*$/.test(mode)) executable = false;
     else if (/^[0-7]{3,4}$/.test(mode)) executable = (Number(mode.slice(-3, -2)) & 1) === 1;
+    else if (/^[ugoa]*=[rwx]*$/.test(mode)) executable = mode.includes('x');
     else if (/^[ugoa]*[+-=][rwx]+$/.test(mode)) executable = null;
     else return result(state, { stderr: gnu ? `chmod: invalid mode: ${q(mode)}\nTry 'chmod --help' for more information.` : `chmod: Invalid file mode: ${mode}`, exitCode: 1 });
     let root = state.root;
@@ -359,7 +380,7 @@ export const posixTools = (flavor: Flavor): Readonly<Record<string, CommandHandl
     return result({ ...state, root }, { stderr: errs.join('\n'), exitCode: errs.length > 0 ? 1 : 0 });
   };
 
-  return { grep, find, head: headTail('head'), tail: headTail('tail'), wc, sort, uniq, ps, pgrep, kill, pkill, chmod };
+  return { grep, find, head: headTail('head'), tail: headTail('tail'), wc, sort, uniq, ps, pgrep, kill, pkill, killall, chmod };
 };
 
 /** Glob for `find -name`: `*`, `?` and `[...]`, matched against the whole name. */

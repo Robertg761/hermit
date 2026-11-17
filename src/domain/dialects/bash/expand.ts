@@ -8,6 +8,8 @@ const expandVars = (text: string, state: MachineState, lastExit: number): string
   text.replace(/\$(\?|[A-Za-z_][A-Za-z0-9_]*|\{[A-Za-z_][A-Za-z0-9_]*\})/g, (_m, name: string) => {
     if (name === '?') return String(lastExit);
     const key = name.startsWith('{') ? name.slice(1, -1) : name;
+    if (key === 'PWD' && state.env[key] === undefined) return formatPosixPath(state.cwd);
+    if (key === 'HOME' && state.env[key] === undefined) return formatPosixPath(state.home);
     return state.env[key] ?? '';
   });
 

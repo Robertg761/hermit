@@ -544,7 +544,8 @@ code {
     grid-column: 1 / -1;
   }
 
-  .result-sheet {
+  /* .lesson raises specificity so this beats the base rule further down. */
+  .lesson .result-sheet {
     flex-direction: column;
     align-items: stretch;
     margin: 0 -12px;
@@ -1931,3 +1932,92 @@ code {
 
 .three-cell { color: #eeeeec; }
 .three-cell.os-screen-linux { background: #2b0b25; }
+
+/* ---------- burrow map ---------- */
+
+.burrow-map {
+  width: 100%;
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 8px 12px;
+  font-size: 14px;
+}
+
+.burrow-map summary {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.burrow-map summary::-webkit-details-marker {
+  display: none;
+}
+
+.burrow-map summary::before {
+  content: '▸';
+  color: var(--muted);
+  transition: transform 150ms ease;
+}
+
+.burrow-map[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.burrow-map-title {
+  font-weight: 700;
+  color: var(--sand);
+}
+
+.burrow-map-where {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+.burrow-map-where code {
+  color: var(--sea);
+}
+
+.burrow-map ul {
+  list-style: none;
+  margin: 8px 0 2px;
+  padding: 0;
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.burrow-map li {
+  padding-top: 2px;
+  padding-bottom: 2px;
+  border-radius: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.burrow-map li.is-here {
+  background: rgb(255 107 87 / 18%);
+  color: var(--text);
+  font-weight: 700;
+  transition: background 200ms ease;
+}
+
+.burrow-map-icon {
+  margin-right: 6px;
+}
+
+.burrow-map-crab {
+  color: var(--coral);
+  font-family: var(--font);
+  font-weight: 600;
+}
+
+.burrow-map-note {
+  margin: 6px 0 0;
+  color: var(--muted);
+}

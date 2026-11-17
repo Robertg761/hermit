@@ -9,7 +9,7 @@ export const SHELLS: readonly { readonly kind: ShellKind; readonly name: string;
   { kind: 'teacup', name: 'Teacup', line: 'Fancy. Pinky claw out.' },
   { kind: 'conch', name: 'Conch', line: 'You can hear the server room in it.' },
   { kind: 'crt', name: 'Old CRT monitor', line: 'Warm, humming, and full of green text.' },
-  { kind: 'chest', name: 'Treasure chest', line: 'For a crab who knows sudo.' },
+  { kind: 'chest', name: 'Treasure chest', line: 'For a crab with admin powers.' },
 ];
 
 type Props = { readonly mood?: HermeMood; readonly size?: number; readonly title?: string; readonly shell?: ShellKind };

@@ -35,12 +35,6 @@ export const wrongOsRules: readonly WrongOsRule[] = [
   },
   {
     on: WIN,
-    test: cmd('ls|dir|gci', '\\s+-R(?=\\s|$)'),
-    explain: 'PowerShell has no `-R`. Use `Get-ChildItem -Recurse` to look inside every folder.',
-    examples: ['ls -R'],
-  },
-  {
-    on: WIN,
     test: cmd('touch'),
     explain: 'Windows has no `touch`. Make an empty file with `New-Item name.txt`.',
     examples: ['touch notes.txt'],

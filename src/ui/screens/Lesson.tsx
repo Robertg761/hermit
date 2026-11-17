@@ -22,6 +22,7 @@ import { Herme, type ShellKind, type HermeMood } from '../mascot/Herme';
 import { SHELL_LABEL } from '../os';
 import { sounds } from '../sound';
 import { Terminal, type TerminalReply } from '../terminal/Terminal';
+import { BurrowMap } from '../components/BurrowMap';
 import { BuildCard, ChoiceCard, FillCard, LearnCardView, MatchCard, outputLines, type ScreenLine } from './cards';
 import { Markdownish } from './Markdownish';
 
@@ -167,6 +168,10 @@ export function Lesson({ lesson, os, dialect, onExit, onComplete, secrets = [], 
         return { stdout: r.stdout, stderr: r.stderr, clear, ...(note ? { note } : {}) };
       }
       setSpeech(lost ? say('error', 'sad') : { mood: 'idle', text: 'See? Nothing broke. Now read what it said, and fix it.' });
+    } else if (r.free === true && explainer !== undefined) {
+      // A real command Hermit doesn't simulate: curiosity, not a mistake.
+      setSpeech({ mood: 'idle', text: explainer });
+      return { stdout: r.stdout, stderr: r.stderr, clear, ...(note ? { note } : {}) };
     } else if (line.trim().length > 0) {
       setSpeech((s) => (s.mood === 'sad' ? { mood: 'idle', text: s.text } : s));
     }
@@ -258,6 +263,12 @@ export function Lesson({ lesson, os, dialect, onExit, onComplete, secrets = [], 
   const banner = useMemo(() => `Hermit ${SHELL_LABEL[os]} simulator. Nothing here touches a real computer.`, [os]);
   const isTerminal = challenge.type === 'do' || challenge.type === 'fix' || challenge.type === 'typeAlong' || challenge.type === 'translate';
   const locked = feedback !== null || restartNotice;
+  // The map helps wherever the learner moves around: terminal, Build and Fill challenges.
+  const showMap = isTerminal || challenge.type === 'build' || challenge.type === 'fill';
+  const mapOpenByDefault = useMemo(
+    () => /^u[12]-/.test(lesson.id) && !(typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 760px)').matches),
+    [lesson.id],
+  );
 
   const learnExample = useMemo((): readonly ScreenLine[] | null => {
     const example = challenge.card?.[os].example;
@@ -403,6 +414,7 @@ export function Lesson({ lesson, os, dialect, onExit, onComplete, secrets = [], 
               💡 {hintsShown === 0 ? 'Hint' : 'Another hint'}
             </button>
           )}
+          {showMap && <BurrowMap machine={run.attempt.machine} os={os} defaultOpen={mapOpenByDefault} />}
         </aside>
       </section>
 

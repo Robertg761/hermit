@@ -40,6 +40,24 @@ describe('error decoder', () => {
     expect(r.wrongOs).toBeDefined();
     expect(r.decoded).toBeUndefined();
   });
+  it('real commands Hermit does not simulate are free and explained', () => {
+    const man = run('linux', 'man ls');
+    expect(man.free).toBe(true);
+    expect(man.decoded).toContain('opens the manual');
+    expect(run('mac', 'brew install wget').free).toBe(true);
+    expect(run('windows', 'Get-History').free).toBe(true);
+    expect(run('linux', 'ls --help').free).toBe(true);
+    expect(run('linux', 'pdw').free).toBeUndefined();
+  });
+  it('common slips get a plain-English line', () => {
+    expect(run('linux', 'LS').decoded).toContain('lower case: `ls`');
+    expect(run('linux', 'cp notes.txt').decoded).toContain('needs two names');
+    expect(run('linux', 'mkdir').decoded).toContain('needs a name');
+    expect(run('linux', 'cat "notes.txt').decoded).toContain('never closed');
+    expect(run('windows', 'Get-Content "notes.txt').decoded).toContain('never closed');
+    expect(run('linux', 'cat my file.txt').decoded).toContain('quotes');
+    expect(run('windows', 'Get-Content my file.txt').decoded).toContain('quotes');
+  });
   it('successful commands are left alone', () => {
     expect(run('linux', 'ls').decoded).toBeUndefined();
   });
