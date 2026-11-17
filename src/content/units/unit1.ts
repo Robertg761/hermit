@@ -1,5 +1,5 @@
 import type { SeedState } from '../../domain/machine';
-import type { Lesson, PerOs, Unit } from '../../domain/lessons/types';
+import type { Goal, Lesson, PerOs, Unit } from '../../domain/lessons/types';
 import { build, byHome, fill, learn, match, pick, predict, px, same, task, typeAlong } from '../builders';
 
 /** The learner's home folder in Unit 1: a small, lived-in burrow. */
@@ -23,9 +23,17 @@ const seedAt = (cwd?: string): PerOs<SeedState> => {
   return { linux: at(burrow('posix')), mac: at(burrow('posix')), windows: at(burrow('windows')) };
 };
 
-const printsPath = (rel = ''): PerOs<{ kind: 'stdoutIncludes'; text: string }> => {
+/**
+ * The output shows the path of `rel`. On Windows, `Get-ChildItem` also prints the path (in its
+ * "Directory:" header), so a listing is ruled out: it answers "what's here", not "where am I".
+ */
+const printsPath = (rel = ''): PerOs<Goal> => {
   const p = byHome((h) => (rel === '' ? h : `${h}/${rel}`), rel === '' ? 'C:\\Users\\you' : `C:\\Users\\you\\${rel.replace(/\//g, '\\')}`);
-  return { linux: { kind: 'stdoutIncludes', text: p.linux }, mac: { kind: 'stdoutIncludes', text: p.mac }, windows: { kind: 'stdoutIncludes', text: p.windows } };
+  return {
+    linux: { kind: 'stdoutIncludes', text: p.linux },
+    mac: { kind: 'stdoutIncludes', text: p.mac },
+    windows: { kind: 'all', goals: [{ kind: 'stdoutIncludes', text: p.windows }, { kind: 'stdoutExcludes', text: 'LastWriteTime' }] },
+  };
 };
 
 // ---------------------------------------------------------------------------
@@ -61,8 +69,8 @@ export const unit1Lesson1: Lesson = {
       uses: ['prompt'],
       seed: seedAt(),
       card: {
-        linux: { title: 'pwd: where am I?', body: "You're always standing in exactly one folder. `pwd` (**p**rint **w**orking **d**irectory) tells you which.", example: 'pwd' },
-        mac: { title: 'pwd: where am I?', body: "You're always standing in exactly one folder. `pwd` (**p**rint **w**orking **d**irectory) tells you which.", example: 'pwd' },
+        linux: { title: 'pwd: where am I?', body: "You're always standing in exactly one folder. `pwd` (**p**rint **w**orking **d**irectory) tells you which. *Directory* is another word for folder.", example: 'pwd' },
+        mac: { title: 'pwd: where am I?', body: "You're always standing in exactly one folder. `pwd` (**p**rint **w**orking **d**irectory) tells you which. *Directory* is another word for folder.", example: 'pwd' },
         windows: {
           title: 'Get-Location: where am I?',
           body: "You're always standing in exactly one folder. `Get-Location` tells you which. PowerShell commands are a verb and a noun: *Get* the *Location*. The short `pwd` works too.",
@@ -97,12 +105,12 @@ export const unit1Lesson1: Lesson = {
         ['Right: print working directory.', 'Easy mix-up, but pwd is not your password. Never type passwords into random commands.', "That's a different command. You'll meet it next lesson."],
         ['Right: your location among the folders.', 'Location here means your place among the folders, not on Earth.', "That's a different command. You'll meet it next lesson."],
       ),
-      explain: px('`pwd` prints the folder you are standing in.', '`Get-Location` returns the folder you are standing in.'),
+      explain: px('`pwd` prints the folder you are standing in.', '`Get-Location` shows the folder you are standing in.'),
     }),
     predict({
       id: 'u1-l1-c5',
       uses: ['pwd'],
-      prompt: same('Herme is in his photos folder and types this. What prints?'),
+      prompt: same('Herme is in the photos folder, inside your home folder. He types this. What prints?'),
       seed: seedAt('photos'),
       command: px(['pwd'], ['Get-Location']),
       options: {
@@ -127,7 +135,7 @@ export const unit1Lesson1: Lesson = {
     task({
       id: 'u1-l1-c7',
       uses: ['pwd', 'errors'],
-      prompt: same('Herme typed this and got an error. Press Enter to see it, then fix the command.'),
+      prompt: same('Herme typed this and got an error. Press Enter to see it, then type the command correctly.'),
       seed: seedAt(),
       prefill: px('pdw', 'Get-Locaton'),
       goal: printsPath(),
@@ -192,7 +200,7 @@ export const unit1Lesson2: Lesson = {
       answer: px(1, 2),
       reasons: px(
         ['That tells you *where* you are, not what is there.', 'Right: list.', "Close in meaning, but commands are short. There's no `list` command."],
-        ['That tells you *where* you are, not what is there.', "Sounds right, but there's no such cmdlet. The things in a folder are its *child items*.", 'Right: the child items are what is inside.'],
+        ['That tells you *where* you are, not what is there.', "Sounds right, but there's no such command. The things in a folder are its *child items*.", 'Right: the child items are what is inside.'],
       ),
       explain: px('`ls` lists what is here.', '`Get-ChildItem` lists what is here.'),
     }),
@@ -215,10 +223,10 @@ export const unit1Lesson2: Lesson = {
       options: px(['pwd', 'ls', 'where'], ['Get-ChildItem', 'Get-Location', 'Get-Where']),
       answer: px(0, 1),
       reasons: px(
-        ['Right: print working directory.', 'That lists what is here.', 'Not the command you want here.'],
-        ['That lists what is here.', 'Right.', 'Not a real cmdlet.'],
+        ['Right: print working directory.', 'That lists what is here.', "Sounds right, but `where` won't tell you where *you* are."],
+        ['That lists what is here.', 'Right: *Get* your *Location*.', "There's no such command. Where you are is your *Location*."],
       ),
-      explain: px('`pwd` prints your working directory.', '`Get-Location` returns your current folder.'),
+      explain: px('`pwd` prints your working directory.', '`Get-Location` shows the folder you are in.'),
     }),
     learn({
       id: 'u1-l2-c6',
@@ -228,12 +236,12 @@ export const unit1Lesson2: Lesson = {
       card: px(
         {
           title: 'Flags change how a command works',
-          body: 'A **flag** starts with a dash and goes after a space: `ls -a` means "list, **a**ll of them". Names starting with a dot are hidden, and `-a` shows them.',
+          body: 'A **flag** starts with a dash and comes after the command, with a space between. `ls -a` means "list **a**ll of them". Names starting with a dot are hidden, and `-a` shows them. (Skip the lone `.` and `..` for now. You will meet them soon.)',
           example: 'ls -a',
         },
         {
           title: 'Parameters change how a command works',
-          body: 'A **parameter** starts with a dash and goes after a space. `Get-ChildItem -Force` *forces* hidden files to show. Windows hides files with a hidden setting, not with a dot.',
+          body: 'A **parameter** starts with a dash and comes after the command, with a space between. `Get-ChildItem -Force` *forces* hidden files to show. A hidden file gets an `h` in its Mode.',
           example: 'Get-ChildItem -Force',
         },
       ),
@@ -246,8 +254,8 @@ export const unit1Lesson2: Lesson = {
       goal: px({ kind: 'stdoutIncludes', text: '.herme-secret' }, { kind: 'stdoutIncludes', text: 'herme-secret.txt' }),
       tokens: px(['all', 'ls', 'pwd', '-a', 'a'], ['-Show', 'Get-ChildItem', 'Force', 'Get-Location', '-Force']),
       solutions: px([['ls -a']], [['Get-ChildItem -Force']]),
-      hints: same(['Command first, then the flag with its dash.']),
-      explain: px('There it is: `.herme-secret`. The dot at the start is what hides it.', 'There it is: `herme-secret.txt`, with an `h` (hidden) in its Mode.'),
+      hints: px(['Command first, then the flag with its dash.'], ['Command first, then the parameter with its dash.']),
+      explain: px('There it is: `.herme-secret`. The dot at the start is what hides it.', 'There it is: `herme-secret.txt`, with an `h` for hidden in its Mode.'),
     }),
     match({
       id: 'u1-l2-c8',
@@ -269,6 +277,7 @@ export const unit1Lesson2: Lesson = {
     task({
       id: 'u1-l2-c9',
       uses: ['ls-a'],
+      openHint: true,
       prompt: same('Something is hiding in projects too. You are already in projects. Find it.'),
       seed: seedAt('projects'),
       goal: px({ kind: 'stdoutIncludes', text: '.plan' }, { kind: 'stdoutIncludes', text: 'plan.txt' }),
@@ -280,7 +289,7 @@ export const unit1Lesson2: Lesson = {
       id: 'u1-l2-c10',
       uses: ['pwd'],
       review: true,
-      prompt: same('Before you go: Herme says you are somewhere in the burrow. Check exactly where.'),
+      prompt: same('Before you go: Herme has moved you again. Check exactly where you are.'),
       seed: seedAt('photos'),
       goal: printsPath('photos'),
       solutions: px([['pwd']], [['Get-Location'], ['pwd']]),
@@ -303,10 +312,14 @@ export const unit1Lesson3: Lesson = {
       teaches: ['cd'],
       seed: seedAt(),
       card: px(
-        { title: 'cd: go into a folder', body: '`cd` (**c**hange **d**irectory) is like double-clicking a folder. Afterwards, your prompt shows where you are.', example: 'cd projects' },
+        {
+          title: 'cd: go into a folder',
+          body: '`cd` (**c**hange **d**irectory) is like double-clicking a folder. It prints nothing, but your prompt changes to show where you are. To go more than one folder deep, join the names with `/`: `cd projects/game`.',
+          example: 'cd projects',
+        },
         {
           title: 'Set-Location: go into a folder',
-          body: '`Set-Location` is like double-clicking a folder. Its short name is `cd`, which everyone uses. Afterwards, your prompt shows where you are.',
+          body: '`Set-Location` is like double-clicking a folder: *Set* your *Location*. Its short name `cd` is what everyone types. It prints nothing, but your prompt changes to show where you are. To go more than one folder deep, join the names with `\\`: `cd projects\\game`.',
           example: 'cd projects',
         },
       ),
@@ -351,7 +364,10 @@ export const unit1Lesson3: Lesson = {
       teaches: ['cd-up'],
       uses: ['cd'],
       seed: seedAt('projects/game'),
-      card: same({ title: '.. is the folder above', body: 'Two dots always mean "one level up". `cd ..` climbs out of the folder you are in.', example: 'cd ..' }),
+      card: px(
+        { title: '.. is the folder above', body: 'Two dots always mean "one level up". You are in game, so `cd ..` climbs back out to projects. (That is the `..` you saw in `ls -a`.)', example: 'cd ..' },
+        { title: '.. is the folder above', body: 'Two dots always mean "one level up". You are in game, so `cd ..` climbs back out to projects.', example: 'cd ..' },
+      ),
     }),
     fill({
       id: 'u1-l3-c6',
@@ -383,20 +399,21 @@ export const unit1Lesson3: Lesson = {
     task({
       id: 'u1-l3-c8',
       uses: ['cd', 'errors'],
-      prompt: same('Herme tried to jump into the game folder but fumbled the spelling. Run it to read the error, then fix it.'),
+      prompt: same('Herme tried to jump into the game folder but fumbled the spelling. Press Enter to read the error, then type it correctly.'),
       seed: seedAt(),
       prefill: px('cd projects/gaem', 'cd projects\\gaem'),
       goal: same({ kind: 'cwdIs', path: 'projects/game' }),
       solutions: px([['cd projects/game']], [['cd projects\\game'], ['Set-Location projects/game']]),
       hints: px(['Read the error: the folder name is misspelled.', 'Type `cd projects/game`.'], ['Read the error: the folder name is misspelled.', 'Type `cd projects\\game`.']),
       explain: px(
-        'You can `cd` through several folders at once with a path like `projects/game`.',
-        'You can `cd` through several folders at once. PowerShell accepts `projects\\game` or `projects/game`.',
+        'The error named the exact part it could not find: `gaem`. Errors are clues.',
+        'The error named the exact path it could not find. Errors are clues. (PowerShell also accepts `/`, as in `projects/game`.)',
       ),
     }),
     task({
       id: 'u1-l3-c9',
       uses: ['cd', 'cd-up'],
+      openHint: true,
       prompt: same('You are in website. Get to the game folder next door.'),
       seed: seedAt('projects/website'),
       goal: same({ kind: 'cwdIs', path: 'projects/game' }),
@@ -408,14 +425,14 @@ export const unit1Lesson3: Lesson = {
       id: 'u1-l3-c10',
       uses: ['ls-a'],
       review: true,
-      prompt: same('Which command also shows hidden files?'),
+      prompt: same('Which command shows hidden files too?'),
       options: px(['ls -a', 'ls a', 'ls-a'], ['Get-ChildItem Force', 'Get-ChildItem -Force', 'Get-ChildItem-Force']),
       answer: px(0, 1),
       reasons: px(
         ['Right: command, space, dash, flag.', 'Without the dash, `a` is treated as a folder name.', 'Without a space, the terminal looks for a command called `ls-a`.'],
         ['Without the dash, `Force` is treated as a folder name.', 'Right: command, space, dash, parameter.', 'Without a space, PowerShell looks for a command with that whole name.'],
       ),
-      explain: same('A flag needs a space before it and a dash at its start.'),
+      explain: px('A flag needs a space before it and a dash at its start.', 'A parameter needs a space before it and a dash at its start.'),
     }),
   ],
 };
@@ -434,15 +451,23 @@ export const unit1Lesson4: Lesson = {
       uses: ['cd'],
       seed: seedAt('projects/website'),
       card: px(
-        { title: '~ means home', body: 'It is the `~` in your prompt. `cd ~` takes you home from anywhere. (Plain `cd` does too.)', example: 'cd ~' },
-        { title: '~ means home', body: '`~` is short for your home folder, `C:\\Users\\you`. `cd ~` takes you home from anywhere.', example: 'cd ~' },
+        {
+          title: '~ means home',
+          body: '`~` (a tilde) is short for your home folder. It is the `~` you have seen in your prompt. `cd ~` takes you home from anywhere. (Plain `cd` does too.) On a US keyboard, type it with Shift and the key below Esc.',
+          example: 'cd ~',
+        },
+        {
+          title: '~ means home',
+          body: '`~` (a tilde) is short for your home folder, `C:\\Users\\you`. `cd ~` takes you home from anywhere. On a US keyboard, type it with Shift and the key below Esc.',
+          example: 'cd ~',
+        },
       ),
     }),
     task({
       id: 'u1-l4-c2',
       uses: ['cd-home'],
       openHint: true,
-      prompt: same('You wandered deep into projects/website. Head back to your home folder.'),
+      prompt: px('You wandered deep into projects/website. Head back to your home folder.', 'You wandered deep into projects\\website. Head back to your home folder.'),
       seed: seedAt('projects/website'),
       goal: same({ kind: 'cwdIs', path: '' }),
       solutions: px([['cd ~'], ['cd'], ['cd ../..']], [['cd ~'], ['Set-Location ~'], ['cd ..\\..']]),
@@ -471,12 +496,12 @@ export const unit1Lesson4: Lesson = {
       card: px(
         {
           title: 'ls -l: the long list',
-          body: '`-l` (**l**ong) adds details to each line: permissions (who may read or change it), owner, size in bytes, when it last changed, and the name.',
+          body: '`-l` (**l**ong) adds details. Each line shows permissions (who may read or change it), the owner (`you`), the size in bytes, when it last changed, and the name. Skip the other bits for now.',
           example: 'ls -l',
         },
         {
           title: 'The details are already there',
-          body: 'No flag needed: `Get-ChildItem` already shows details. `Mode` is the type and settings, `LastWriteTime` is when it last changed, `Length` is the size in bytes.',
+          body: 'No parameter needed: `Get-ChildItem` already shows details. `Mode` is the type and settings, `LastWriteTime` is when it last changed, `Length` is the size in bytes.',
           example: 'Get-ChildItem',
         },
       ),
@@ -484,11 +509,11 @@ export const unit1Lesson4: Lesson = {
     typeAlong({
       id: 'u1-l4-c5',
       uses: ['ls-l'],
-      prompt: same('List the photos folder with details.'),
+      prompt: same('You are in photos. List what is here, with details.'),
       seed: seedAt('photos'),
       goal: px({ kind: 'stdoutIncludes', text: 'rw-r--r--' }, { kind: 'stdoutIncludes', text: 'LastWriteTime' }),
       line: px('ls -l', 'Get-ChildItem'),
-      explain: same('Each photo is 4 bytes here. Real photos are millions.'),
+      explain: same('Each photo is 4 bytes here. Real photos are millions of bytes.'),
     }),
     pick({
       id: 'u1-l4-c6',
@@ -522,7 +547,7 @@ export const unit1Lesson4: Lesson = {
           ['cd ~', 'Go home'],
         ],
       ),
-      explain: same('That is all of Unit 1. You can find your way around a computer now.'),
+      explain: same('Five commands, and you can already find your way around a computer.'),
     }),
     task({
       id: 'u1-l4-c8',

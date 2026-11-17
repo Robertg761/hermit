@@ -37,6 +37,19 @@ const seed = (cwd?: string): PerOs<SeedState> => same(cwd === undefined ? caseFi
 const shows = (text: string, notText: string): PerOs<Goal> =>
   same({ kind: 'all', goals: [{ kind: 'stdoutIncludes', text }, { kind: 'stdoutExcludes', text: notText }] });
 
+/** Both ERROR lines of the server log, and nothing else. */
+const bothErrors: PerOs<Goal> = same({
+  kind: 'all',
+  goals: [
+    { kind: 'stdoutIncludes', text: 'disk almost full' },
+    { kind: 'stdoutIncludes', text: 'shell not found' },
+    { kind: 'stdoutExcludes', text: 'logged in' },
+  ],
+});
+
+/** The same text with Windows backslashes in paths. */
+const slashes = (text: string): PerOs<string> => px(text, text.replace(/\//g, '\\'));
+
 // ---------------------------------------------------------------------------
 // Lesson 1: Search inside files (grep, grep -r)
 // ---------------------------------------------------------------------------
@@ -92,7 +105,7 @@ export const unit3Lesson1: Lesson = {
       openHint: true,
       prompt: same('You are in the logs folder. The server had problems today. Show only the ERROR lines of server.log.'),
       seed: seed('logs'),
-      goal: shows('shell not found', 'logged in'),
+      goal: bothErrors,
       solutions: px([['grep ERROR server.log']], [['Select-String ERROR server.log'], ['sls ERROR server.log']]),
       hints: px(['Search for the word ERROR in server.log.', 'Type `grep ERROR server.log`.'], ['Search for the word ERROR in server.log.', 'Type `Select-String ERROR server.log`.']),
       explain: same('Two errors: the disk was almost full, and a shell went missing. Very suspicious.'),
@@ -121,7 +134,7 @@ export const unit3Lesson1: Lesson = {
         },
         {
           title: 'Search every file',
-          body: '`Get-ChildItem -Recurse` lists every file in every folder, and the `|` (a **pipe**) hands that list to `Select-String`. You will meet pipes properly in Unit 4.',
+          body: '`Get-ChildItem -Recurse` lists every file in every folder. The `|` (a **pipe**) hands that list to `Select-String`, which searches them all. You will meet pipes properly in Unit 4.',
           example: 'Get-ChildItem -Recurse | Select-String TODO',
         },
       ),
@@ -154,17 +167,18 @@ export const unit3Lesson1: Lesson = {
           ['Get-ChildItem', 'List what is here'],
         ],
       ),
-      explain: same('Searching is just reading, with a filter.'),
+      explain: same('Searching is reading, with a filter.'),
     }),
     task({
       id: 'u3-l1-c9',
       uses: ['grep-r'],
+      openHint: true,
       prompt: same('Somewhere in the project, a file mentions the word large. Which file is it?'),
       seed: seed(),
       goal: same({ kind: 'stdoutIncludes', text: 'shell.js:' }),
       solutions: px([['grep -r large .'], ['grep -r large']], [['Get-ChildItem -Recurse | Select-String large']]),
       hints: px(['Search everywhere, starting here.', 'Type `grep -r large .`.'], ['List everything and pipe it into a search.', 'Type `Get-ChildItem -Recurse | Select-String large`.']),
-      explain: same('It is src/shell.js. The name in front of each line tells you where it lives.'),
+      explain: slashes('It is src/shell.js. The name in front of each line tells you where it lives.'),
     }),
     pick({
       id: 'u3-l1-c10',
@@ -197,12 +211,12 @@ export const unit3Lesson2: Lesson = {
       card: px(
         {
           title: 'find: search for files by name',
-          body: '`grep` searches *inside* files. `find` searches for the files themselves. `-name` gives the name to look for, and `*` is a **wildcard** that matches anything.',
+          body: '`grep` searches *inside* files. `find` searches for the files themselves, in every folder from `.` (here) down. `-name` says what to look for. `*` is a **wildcard**: it stands for any text, so `"*.log"` means any name ending in .log. Keep the quotes.',
           example: 'find . -name "*.log"',
         },
         {
           title: 'Find files by name',
-          body: '`Get-ChildItem -Recurse` looks in every folder, and `-Filter` keeps only names that match. `*` is a **wildcard** that matches anything.',
+          body: '`Get-ChildItem -Recurse` looks in every folder, and `-Filter` keeps only the names that match. `*` is a **wildcard**: it stands for any text, so `*.log` means any name ending in .log.',
           example: 'Get-ChildItem -Recurse -Filter *.log',
         },
       ),
@@ -214,7 +228,7 @@ export const unit3Lesson2: Lesson = {
       seed: seed(),
       goal: same({ kind: 'stdoutIncludes', text: '2025.log' }),
       line: px('find . -name "*.log"', 'Get-ChildItem -Recurse -Filter *.log'),
-      explain: same('Two log files, one of them hiding in logs/old.'),
+      explain: slashes('Two log files, one of them hiding in logs/old.'),
     }),
     pick({
       id: 'u3-l2-c3',
@@ -243,7 +257,7 @@ export const unit3Lesson2: Lesson = {
       id: 'u3-l2-c5',
       uses: ['grep'],
       review: true,
-      prompt: same('Show only the WARNING lines of logs/server.log.'),
+      prompt: slashes('Show only the WARNING lines of logs/server.log.'),
       seed: seed(),
       goal: shows('slow response', 'logged in'),
       solutions: px([['grep WARNING logs/server.log']], [['Select-String WARNING logs\\server.log'], ['Select-String WARNING logs/server.log']]),
@@ -277,7 +291,7 @@ export const unit3Lesson2: Lesson = {
       template: px('___ -n 2 logs/server.log', 'Get-Content logs\\server.log ___ 2'),
       options: px(['head', 'tail', 'cat', 'grep'], ['-TotalCount', '-Tail', '-Skip', '-Count']),
       answer: same(1),
-      hints: px(['The *end* of an animal is its...'], ['You want the end of the file.']),
+      hints: same(['The *end* of an animal is its...']),
       explain: same('The tail end of the log: kim logged out, then the server stopped.'),
     }),
     predict({
@@ -294,9 +308,10 @@ export const unit3Lesson2: Lesson = {
     task({
       id: 'u3-l2-c9',
       uses: ['head-tail'],
-      prompt: same('What was the very last thing the server did? Show only the last line of logs/server.log.'),
+      openHint: true,
+      prompt: slashes('What was the very last thing the server did? Show only the last line of logs/server.log.'),
       seed: seed(),
-      goal: shows('server stopped', 'backup finished'),
+      goal: shows('server stopped', 'kim logged out'),
       solutions: px([['tail -n 1 logs/server.log'], ['tail -1 logs/server.log']], [['Get-Content logs\\server.log -Tail 1'], ['Get-Content logs/server.log -Tail 1']]),
       hints: px(['The end of the file, just one line.', 'Type `tail -n 1 logs/server.log`.'], ['The end of the file, just one line.', 'Type `Get-Content logs\\server.log -Tail 1`.']),
       explain: same('It stopped at 09:00. Case closed? Not yet.'),
@@ -305,6 +320,7 @@ export const unit3Lesson2: Lesson = {
       id: 'u3-l2-c10',
       uses: ['grep', 'find', 'head-tail'],
       review: true,
+      prompt: px('Match each command to what it does.', 'Match each command or parameter to what it does.'),
       pairs: px(
         [
           ['grep', 'Search inside files'],
@@ -338,7 +354,11 @@ export const unit3Lesson3: Lesson = {
       uses: ['cat'],
       seed: seed(),
       card: px(
-        { title: 'wc -l: count lines', body: '`wc` (**w**ord **c**ount) counts a file. With `-l` it counts just the **l**ines, and prints the number before the name.', example: 'wc -l notes.txt' },
+        {
+          title: 'wc -l: count lines',
+          body: '`wc` (**w**ord **c**ount) counts the lines, words and characters in a file. Add `-l` to count only the **l**ines. It prints the number, then the file name.',
+          example: 'wc -l notes.txt',
+        },
         {
           title: 'Count lines',
           body: '`Get-Content` reads the lines, the `|` pipe hands them over, and `Measure-Object -Line` counts them.',
@@ -351,17 +371,20 @@ export const unit3Lesson3: Lesson = {
       uses: ['wc'],
       prompt: same('How long is the server log?'),
       seed: seed(),
-      goal: same({ kind: 'stdoutIncludes', text: '12' }),
+      goal: shows('12', 'started'),
       line: px('wc -l logs/server.log', 'Get-Content logs\\server.log | Measure-Object -Line'),
       explain: same('12 lines. Small for a log; real ones run to millions.'),
     }),
     pick({
       id: 'u3-l3-c3',
       uses: ['wc'],
-      prompt: px('What does `wc -l notes.txt` count?', 'What does `Measure-Object -Line` count?'),
+      prompt: px('What does `wc -l notes.txt` count?', 'What does `Get-Content notes.txt | Measure-Object -Line` count?'),
       options: same(['The lines', 'The letters', 'The files']),
       answer: same(0),
-      reasons: same(['Right.', 'Close: counting characters is a different flag.', 'It counts inside one file.']),
+      reasons: px(
+        ['Right.', 'Close: counting characters is a different flag.', 'It counts inside one file.'],
+        ['Right.', 'Close: counting characters is a different parameter.', 'It counts inside one file.'],
+      ),
       explain: px('`-l` for lines.', '`-Line` for lines.'),
     }),
     task({
@@ -372,7 +395,10 @@ export const unit3Lesson3: Lesson = {
       seed: seed(),
       goal: same({ kind: 'all', goals: [{ kind: 'stdoutIncludes', text: 'shells.txt' }, { kind: 'stdoutIncludes', text: 'notes.txt' }] }),
       solutions: px([['find . -name "*.txt"']], [['Get-ChildItem -Recurse -Filter *.txt']]),
-      hints: px(['Use the wildcard: any name ending in .txt.', 'Type `find . -name "*.txt"`.'], ['Use the wildcard: any name ending in .txt.', 'Type `Get-ChildItem -Recurse -Filter *.txt`.']),
+      hints: px(
+        ['Use the wildcard, in quotes: `"*.txt"` is any name ending in .txt.', 'Type `find . -name "*.txt"`.'],
+        ['Use the wildcard: `*.txt` is any name ending in .txt.', 'Type `Get-ChildItem -Recurse -Filter *.txt`.'],
+      ),
       explain: same('Three text files, one of them out on the beach.'),
     }),
     learn({
@@ -383,7 +409,7 @@ export const unit3Lesson3: Lesson = {
       card: px(
         {
           title: 'grep -i: ignore capitals',
-          body: 'grep is fussy: `kelp`, `Kelp` and `KELP` are different words to it. `-i` (**i**gnore case) finds them all.',
+          body: 'grep is fussy: `kelp`, `Kelp` and `KELP` are different words to it. `-i` finds them all. It stands for **i**gnore case, and *case* means capital or small letters.',
           example: 'grep -i kelp shopping.txt',
         },
         {
@@ -412,22 +438,40 @@ export const unit3Lesson3: Lesson = {
       command: px(['wc -l notes.txt'], ['Get-Content notes.txt | Measure-Object -Line']),
       options: px(['notes.txt 4', '4 notes.txt', '4 lines'], ['4 lines', 'notes.txt: 4', '4']),
       answer: px(1, 2),
-      hints: same(['The number comes first.']),
+      hints: px(['The number comes first.'], ['Look at the card: the count sits in a small table, with no file name.']),
       explain: px('wc prints the count, then the file name.', 'Measure-Object prints a small table, and the count sits under Lines.'),
     }),
-    match({
+    task({
       id: 'u3-l3-c8',
+      uses: ['wc'],
+      openHint: true,
+      prompt: slashes('Herme writes each shell he collects on its own line of beach/shells.txt. How many shells has he got? Count the lines.'),
+      seed: seed(),
+      goal: px<Goal>(
+        { kind: 'all', goals: [{ kind: 'stdoutIncludes', text: '2' }, { kind: 'stdoutExcludes', text: 'conch' }, { kind: 'stdoutExcludes', text: 'Nov' }] },
+        { kind: 'all', goals: [{ kind: 'stdoutIncludes', text: '2' }, { kind: 'stdoutExcludes', text: 'conch' }, { kind: 'stdoutExcludes', text: 'PM' }] },
+      ),
+      solutions: px([['wc -l beach/shells.txt'], ['cd beach', 'wc -l shells.txt']], [['Get-Content beach\\shells.txt | Measure-Object -Line'], ['cd beach', 'Get-Content shells.txt | Measure-Object -Line']]),
+      hints: px(
+        ['Count the lines of beach/shells.txt.', 'Type `wc -l beach/shells.txt`.'],
+        ['Read the file, pipe it, count the lines.', 'Type `Get-Content beach\\shells.txt | Measure-Object -Line`.'],
+      ),
+      explain: same('Two shells: a conch and a whelk. A small collection, but a proud one.'),
+    }),
+    match({
+      id: 'u3-l3-c9',
       uses: ['wc', 'grep-i', 'find', 'head-tail'],
+      prompt: px('Match each command to what it does.', 'Match each command or parameter to what it does.'),
       pairs: px(
         [
           ['wc -l', 'Count lines'],
           ['grep -i', 'Search, ignoring capitals'],
-          ['find -name', 'Find files by name'],
+          ['find . -name', 'Find files by name'],
           ['tail', 'Last lines of a file'],
         ],
         [
           ['Measure-Object -Line', 'Count lines'],
-          ['-CaseSensitive', 'Search, minding capitals'],
+          ['-CaseSensitive', 'Search, capitals must match'],
           ['-Filter', 'Find files by name'],
           ['-Tail', 'Last lines of a file'],
         ],
@@ -435,17 +479,18 @@ export const unit3Lesson3: Lesson = {
       explain: same('That is the whole detective kit.'),
     }),
     task({
-      id: 'u3-l3-c9',
+      id: 'u3-l3-c10',
       uses: ['grep-i'],
-      prompt: same('Did anything go wrong on the server? Search logs/server.log for the word error, in any capitals.'),
+      openHint: true,
+      prompt: slashes('Did anything go wrong on the server? Search logs/server.log for the word error, in any capitals.'),
       seed: seed(),
-      goal: shows('disk almost full', 'logged in'),
+      goal: bothErrors,
       solutions: px([['grep -i error logs/server.log'], ['grep ERROR logs/server.log']], [['Select-String error logs\\server.log'], ['Select-String ERROR logs/server.log']]),
-      hints: px(['The log writes it in capitals. Ignore case.', 'Type `grep -i error logs/server.log`.'], ['Select-String does not mind capitals.', 'Type `Select-String error logs\\server.log`.']),
+      hints: px(['Tell grep to ignore capitals.', 'Type `grep -i error logs/server.log`.'], ['Select-String does not mind capitals.', 'Type `Select-String error logs\\server.log`.']),
       explain: same('Two errors. Somebody should look at that disk.'),
     }),
     task({
-      id: 'u3-l3-c10',
+      id: 'u3-l3-c11',
       uses: ['grep-r'],
       review: true,
       prompt: same('Last check: find every TODO in the whole project.'),
