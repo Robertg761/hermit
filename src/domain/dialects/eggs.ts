@@ -91,7 +91,7 @@ const EGGS: readonly Egg[] = [
         'Memory: plenty, it is all imaginary',
       ];
       const art = ['', ...CRAB, '', '', '', ''];
-      return { stdout: info.map((l, i) => `${art[i] ?? ''.padEnd(19)}   ${l}`).join('\n') + '\n', stderr: '', exitCode: 0 };
+      return { stdout: info.map((l, i) => `${(art[i] ?? '').padEnd(19)}   ${l}`).join('\n') + '\n', stderr: '', exitCode: 0 };
     },
   },
   {
