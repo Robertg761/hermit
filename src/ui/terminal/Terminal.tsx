@@ -1,7 +1,7 @@
 import { FitAddon } from '@xterm/addon-fit';
 import { Terminal as XTerm } from '@xterm/xterm';
 import '@xterm/xterm/css/xterm.css';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { OS } from '../../domain/types';
 import { applyInput, emptyEditor, setLine, type EditorState } from './lineEditor';
 import { terminalThemes } from './themes';
@@ -47,6 +47,30 @@ const wrapWords = (text: string, cols: number): string =>
     })
     .join('\n');
 
+/** Keys that hide on the second or third page of a phone keyboard: [label, data sent, name]. */
+const POSIX_KEYS: readonly (readonly [string, string, string])[] = [
+  ['Tab', '\t', 'Tab'],
+  ['↑', `${String.fromCharCode(27)}[A`, 'Previous command'],
+  ['-', '-', 'Dash'],
+  ['/', '/', 'Slash'],
+  ['~', '~', 'Tilde'],
+  ['.', '.', 'Dot'],
+  ['|', '|', 'Pipe'],
+  ['>', '>', 'Greater than'],
+  ['"', '"', 'Quote'],
+];
+const WINDOWS_KEYS: readonly (readonly [string, string, string])[] = [
+  ['Tab', '\t', 'Tab'],
+  ['↑', `${String.fromCharCode(27)}[A`, 'Previous command'],
+  ['-', '-', 'Dash'],
+  ['\\', '\\', 'Backslash'],
+  ['~', '~', 'Tilde'],
+  ['.', '.', 'Dot'],
+  ['|', '|', 'Pipe'],
+  ['>', '>', 'Greater than'],
+  ['"', '"', 'Quote'],
+];
+
 const toCrlf = (s: string): string => s.replace(/\r?\n/g, '\r\n');
 const ESC = String.fromCharCode(27);
 
@@ -65,6 +89,9 @@ export function Terminal({ os, sessionKey, prompt, onLine, banner, prefill, disa
   const disabledRef = useRef(disabled ?? false);
   const ghostRef = useRef(ghost);
   const completeRef = useRef(complete);
+  /** Feeds keys from the on-screen key bar into the line editor. */
+  const sendRef = useRef<((data: string) => void) | null>(null);
+  const [touch] = useState(() => typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches);
   /** The line as it was after the last Tab, so a second Tab lists the matches. */
   const lastTabRef = useRef<string | null>(null);
   useEffect(() => {
@@ -151,7 +178,7 @@ export function Terminal({ os, sessionKey, prompt, onLine, banner, prefill, disa
       return true;
     });
 
-    const sub = term.onData((data) => {
+    const handleData = (data: string): void => {
       if (disabledRef.current) return;
       if (data !== '\t') lastTabRef.current = null;
       const { state, actions } = applyInput(editorRef.current, data);
@@ -207,8 +234,14 @@ export function Terminal({ os, sessionKey, prompt, onLine, banner, prefill, disa
             break;
         }
       }
-    });
+    };
+    sendRef.current = (data: string): void => {
+      handleData(data);
+      term.focus();
+    };
+    const sub = term.onData(handleData);
     return () => {
+      sendRef.current = null;
       sub.dispose();
       observer.disconnect();
       term.dispose();
@@ -246,5 +279,27 @@ export function Terminal({ os, sessionKey, prompt, onLine, banner, prefill, disa
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [disabled]);
 
-  return <div className="terminal-host" ref={hostRef} onClick={() => termRef.current?.focus()} />;
+  const keys = os === 'windows' ? WINDOWS_KEYS : POSIX_KEYS;
+  return (
+    <>
+      <div className="terminal-host" ref={hostRef} onClick={() => termRef.current?.focus()} />
+      {touch && !disabled && (
+        <div className="key-bar" role="toolbar" aria-label="Terminal keys">
+          {keys.map(([label, data, name]) => (
+            <button
+              key={label}
+              type="button"
+              className="key-bar-key"
+              aria-label={name}
+              // Keep focus (and the phone keyboard) on the terminal.
+              onPointerDown={(e) => e.preventDefault()}
+              onClick={() => sendRef.current?.(data)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+    </>
+  );
 }

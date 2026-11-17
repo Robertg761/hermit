@@ -5,6 +5,7 @@ import { SHELLS, Herme, type ShellKind, type HermeMood } from '../mascot/Herme';
 import { SECRET_HINTS } from '../mascot/lines';
 import { SECRET_IDS } from '../../domain/dialects/eggs';
 import { StatsBar } from '../components/StatsBar';
+import { CheatSheet } from '../components/CheatSheet';
 
 type Upcoming = { readonly id: string; readonly title: string; readonly blurb: string };
 
@@ -113,6 +114,7 @@ export function Home({ os, units, upcoming, completed, playable, unlocked, shell
                   {unitDone}/{unit.lessons.length}
                 </span>
               </div>
+              <CheatSheet unit={unit} os={os} completed={completed} />
               {ui > 0 && unitDone === 0 && !unlocked.includes(unit.id) && !unit.lessons.some((l) => playable.includes(l.id)) && (
                 <button type="button" className="skip-ahead" onClick={() => onSkipAhead(unit.id)} aria-label={`Know ${unit.title} already? Skip ahead`}>
                   Know this already? Skip ahead

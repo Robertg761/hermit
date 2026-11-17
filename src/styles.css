@@ -2061,3 +2061,81 @@ code {
 .recap-real {
   border-color: rgb(76 201 214 / 45%);
 }
+
+/* ---------- phone key bar ---------- */
+
+.key-bar {
+  display: flex;
+  gap: 6px;
+  padding: 6px 8px;
+  overflow-x: auto;
+  background: var(--ink-2);
+  border-top: 1px solid var(--line);
+  scrollbar-width: none;
+}
+
+.key-bar-key {
+  flex: 0 0 auto;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--ink-3);
+  color: var(--text);
+  font: 600 16px var(--mono);
+  touch-action: manipulation;
+}
+
+.key-bar-key:active {
+  background: var(--coral);
+  color: var(--ink);
+}
+
+/* ---------- cheat sheet ---------- */
+
+.cheat-sheet {
+  margin: 10px 0 4px;
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 8px 14px;
+}
+
+.cheat-sheet summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--sand);
+}
+
+.cheat-sheet dl {
+  margin: 8px 0 4px;
+}
+
+.cheat-row {
+  display: grid;
+  grid-template-columns: minmax(0, 11rem) minmax(0, 1fr);
+  gap: 4px 14px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}
+
+.cheat-row dt {
+  margin: 0;
+}
+
+.cheat-row dd {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.cheat-row dd strong {
+  color: var(--text);
+}
+
+@media (max-width: 640px) {
+  .cheat-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

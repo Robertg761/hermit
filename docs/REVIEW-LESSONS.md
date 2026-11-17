@@ -32,6 +32,8 @@ The main kinds of problem, with examples:
 4. **Lesson recap and "Try it on your computer".** The complete screen lists what the lesson taught and how to open a real terminal on your OS, with the lesson's look-only commands to try.
 5. **Accessibility.** Screen reader mode for the terminal, a name for the progress bar, unit names on the Skip ahead buttons.
 6. **Safer secret hint.** "Try the most famous terrible command" now adds "only here, never on a real computer".
+7. **Phone key bar.** On touch screens a row of keys sits under the terminal: Tab, ↑, `-`, `/` (or `\` on Windows), `~`, `.`, `|`, `>` and `"`, the symbols hidden on the second page of a phone keyboard.
+8. **Cheat sheet per unit.** Each unit on the path gets a cheat sheet built from the Learn cards of the lessons you've finished, so it grows as you learn.
 
 ## Calls for Robert
 
@@ -46,6 +48,4 @@ These change the spec or the game rules, so they were not built:
 
 ## Still open (smaller)
 
-- A symbol key bar above the phone keyboard (`-`, `/`, `~`, `|`, `>`, `\`, Tab, ↑).
-- A per-unit cheat sheet built from the Learn cards.
 - Engine accuracy nits: macOS error wording copies Linux in a few places, `ps -ef` prints the `aux` layout, PowerShell `Measure-Object` lacks the StandardDeviation row.
