@@ -576,9 +576,156 @@ export const unit1Lesson4: Lesson = {
   ],
 };
 
+// ---------------------------------------------------------------------------
+// Lesson 5: Terminal superpowers
+// ---------------------------------------------------------------------------
+
+const LONG = 'herme-holiday-snaps-2026';
+
+/** The burrow plus a folder whose name is too long to enjoy typing. */
+const snapsSeed = (cwd?: string): PerOs<SeedState> => {
+  const base = seedAt(cwd);
+  const add = (s: SeedState): SeedState => ({ ...s, files: { ...s.files, [`photos/${LONG}/crab-selfie.jpg`]: 'JPEG', [`photos/${LONG}/sandcastle.jpg`]: 'JPEG' } });
+  return { linux: add(base.linux), mac: add(base.mac), windows: add(base.windows) };
+};
+
+export const unit1Lesson5: Lesson = {
+  id: 'u1-l5',
+  title: 'Terminal superpowers',
+  challenges: [
+    learn({
+      id: 'u1-l5-c1',
+      teaches: ['tab'],
+      uses: ['cd'],
+      seed: seedAt(),
+      card: same({
+        title: 'Tab finishes names for you',
+        body: 'Type the first few letters of a file or folder, then press **Tab**. The terminal finishes the name, spelled right. If nothing happens, more than one name fits: press **Tab** again to see them all. People who use the terminal every day press Tab all the time.',
+      }),
+    }),
+    typeAlong({
+      id: 'u1-l5-c2',
+      uses: ['tab', 'cd'],
+      prompt: px('Type `cd pro`, press Tab, then press Enter.', 'Type `cd pro`, press Tab, then press Enter.'),
+      seed: seedAt(),
+      goal: same({ kind: 'cwdIs', path: 'projects' }),
+      line: px('cd projects/', 'cd projects\\'),
+      also: px([['cd projects']], [['cd projects']]),
+      explain: px(
+        'Tab added the rest of the name and a `/`, because projects is a folder.',
+        'Tab added the rest of the name and a `\\`, because projects is a folder.',
+      ),
+    }),
+    pick({
+      id: 'u1-l5-c3',
+      uses: ['tab'],
+      prompt: same('You type `cd ph` and press Tab. What happens?'),
+      options: px(
+        ['The line becomes cd photos/', 'The command runs right away', 'Everything you typed is deleted'],
+        ['The line becomes cd photos\\', 'The command runs right away', 'Everything you typed is deleted'],
+      ),
+      answer: same(0),
+      reasons: same(['Right: photos is the only name here that starts with ph.', 'Only Enter runs a command. Tab only finishes the name.', 'Tab never deletes. It only adds letters.']),
+      explain: same('Tab finishes, Enter runs.'),
+    }),
+    task({
+      id: 'u1-l5-c4',
+      uses: ['tab', 'cd'],
+      openHint: true,
+      prompt: px(
+        `Herme's holiday photos are in a folder with a very long name inside photos. Go into it. Let Tab do the typing.`,
+        `Herme's holiday photos are in a folder with a very long name inside photos. Go into it. Let Tab do the typing.`,
+      ),
+      seed: snapsSeed('photos'),
+      goal: same({ kind: 'cwdIs', path: `photos/${LONG}` }),
+      solutions: px([[`cd ${LONG}/`], [`cd ${LONG}`]], [[`cd ${LONG}\\`], [`cd ${LONG}`]]),
+      hints: same(['Type `cd herme` and press Tab.', `Then press Enter. The whole line is \`cd ${LONG}\`.`]),
+      explain: same('Twenty-four letters, and you typed five. Tab also spells them right, every time.'),
+    }),
+    pick({
+      id: 'u1-l5-c5',
+      uses: ['pwd'],
+      review: true,
+      prompt: px('After all that, which command tells you where you ended up?', 'After all that, which command tells you where you ended up?'),
+      options: px(['pwd', 'ls', 'cd ..'], ['Get-Location', 'Get-ChildItem', 'cd ..']),
+      answer: same(0),
+      reasons: px(
+        ['Right: print working directory.', 'That shows what is inside, not where you are.', 'That moves you up a folder.'],
+        ['Right: it shows the folder you are in.', 'That shows what is inside, not where you are.', 'That moves you up a folder.'],
+      ),
+      explain: same('Lost? Ask the terminal where you are.'),
+    }),
+    learn({
+      id: 'u1-l5-c6',
+      teaches: ['history'],
+      uses: ['prompt'],
+      seed: seedAt(),
+      card: same({
+        title: 'Up arrow: your last command',
+        body: 'Press **↑** (the up arrow) and your last command comes back. Press it again to go further back. Change it, or press Enter to run it again. And if you start a line you no longer want, **Ctrl+C** throws it away.',
+      }),
+    }),
+    task({
+      id: 'u1-l5-c7',
+      uses: ['history', 'ls'],
+      openHint: true,
+      prompt: px(
+        'List the photos folder with `ls photos`. Then press ↑ and Enter to run it again.',
+        'List the photos folder with `Get-ChildItem photos`. Then press ↑ and Enter to run it again.',
+      ),
+      seed: seedAt(),
+      goal: same({ kind: 'stdoutIncludes', text: 'tidepool.jpg' }),
+      solutions: px([['ls photos']], [['Get-ChildItem photos'], ['ls photos']]),
+      hints: px(['Type `ls photos` and press Enter first.', 'Then press the ↑ key and Enter.'], ['Type `Get-ChildItem photos` and press Enter first.', 'Then press the ↑ key and Enter.']),
+      explain: same('From now on, when a command almost worked, press ↑ and fix it instead of typing it all again.'),
+    }),
+    match({
+      id: 'u1-l5-c8',
+      uses: ['tab', 'history', 'pwd', 'cd-up'],
+      prompt: same('Match each key or command to what it does.'),
+      pairs: px(
+        [
+          ['Tab', 'Finish a name'],
+          ['↑', 'Bring back the last command'],
+          ['pwd', 'Show where you are'],
+          ['cd ..', 'Go up one folder'],
+        ],
+        [
+          ['Tab', 'Finish a name'],
+          ['↑', 'Bring back the last command'],
+          ['Get-Location', 'Show where you are'],
+          ['cd ..', 'Go up one folder'],
+        ],
+      ),
+      explain: same('Two keys and two commands. You will use all four every day.'),
+    }),
+    task({
+      id: 'u1-l5-c9',
+      uses: ['tab', 'cd'],
+      prompt: px('Get from home to the game folder inside projects, typing as little as you can.', 'Get from home to the game folder inside projects, typing as little as you can.'),
+      seed: snapsSeed(),
+      goal: same({ kind: 'cwdIs', path: 'projects/game' }),
+      solutions: px([['cd projects/game/'], ['cd projects/game'], ['cd projects', 'cd game']], [['cd projects\\game\\'], ['cd projects\\game'], ['cd projects', 'cd game']]),
+      hints: px(['Type `cd pro`, press Tab, then `g` and Tab again.', 'The whole line is `cd projects/game/`.'], ['Type `cd pro`, press Tab, then `g` and Tab again.', 'The whole line is `cd projects\\game\\`.']),
+      explain: same('Tab works on every part of a path, one folder at a time.'),
+    }),
+    task({
+      id: 'u1-l5-c10',
+      uses: ['ls-a', 'cd'],
+      review: true,
+      prompt: px('Herme hid a note in the projects folder. Go in and find it.', 'Herme hid a note in the projects folder. Go in and find it.'),
+      seed: seedAt(),
+      goal: px({ kind: 'stdoutIncludes', text: '.plan' }, { kind: 'stdoutIncludes', text: 'plan.txt' }),
+      solutions: px([['cd projects', 'ls -a'], ['ls -a projects']], [['cd projects', 'Get-ChildItem -Force'], ['Get-ChildItem projects -Force']]),
+      hints: px(['Hidden files need a flag.', 'Type `cd projects`, then `ls -a`.'], ['Hidden files need a parameter.', 'Type `cd projects`, then `Get-ChildItem -Force`.']),
+      explain: same('That is Unit 1. You can move around, look around, and let the keyboard do the boring parts.'),
+    }),
+  ],
+};
+
 export const unit1: Unit = {
   id: 'u1',
   title: 'Getting around',
   blurb: 'Meet the terminal, find out where you are, and move between folders.',
-  lessons: [unit1Lesson1, unit1Lesson2, unit1Lesson3, unit1Lesson4],
+  lessons: [unit1Lesson1, unit1Lesson2, unit1Lesson3, unit1Lesson4, unit1Lesson5],
 };
