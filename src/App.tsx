@@ -19,7 +19,7 @@ import {
 import type { OS } from './domain/types';
 import { createLocalStore } from './providers/storage';
 import { pickLine } from './ui/mascot/lines';
-import { SHELLS, type ShellKind, type ShellbyMood } from './ui/mascot/Shellby';
+import { SHELLS, type ShellKind, type HermeMood } from './ui/mascot/Herme';
 import { detectOs } from './ui/os';
 import { Home } from './ui/screens/Home';
 import { Landing } from './ui/screens/Landing';
@@ -79,7 +79,7 @@ export function App() {
     store.save(p);
   };
 
-  const makeGreeting = (p: Progress): { text: string; mood: ShellbyMood } => {
+  const makeGreeting = (p: Progress): { text: string; mood: HermeMood } => {
     if (streakLost(p.streak, today)) return { text: pickLine('streakLost'), mood: 'sad' };
     const track = trackFor(p, p.os ?? os);
     if (track.completed.length === 0) return { text: "Welcome to the tide pool. Tap the glowing node and let's begin.", mood: 'idle' };

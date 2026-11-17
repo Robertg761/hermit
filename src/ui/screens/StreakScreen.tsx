@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Flame } from '../components/StatsBar';
-import { Shellby } from '../mascot/Shellby';
+import { Herme } from '../mascot/Herme';
 import { sounds } from '../sound';
 
 type Props = {
@@ -40,7 +40,7 @@ export function StreakScreen({ streak, week, onContinue, continueLabel = 'Contin
         })}
       </ol>
       <div className="streak-say">
-        <Shellby mood="smug" size={90} />
+        <Herme mood="smug" size={90} />
         <p className="speech speech-left">{line}</p>
       </div>
       <button type="button" className="primary-button wide" onClick={onContinue} autoFocus>

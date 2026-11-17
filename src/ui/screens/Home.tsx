@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Lesson, Unit } from '../../domain/lessons/types';
 import type { OS } from '../../domain/types';
-import { SHELLS, Shellby, type ShellKind, type ShellbyMood } from '../mascot/Shellby';
+import { SHELLS, Herme, type ShellKind, type HermeMood } from '../mascot/Herme';
 import { SECRET_HINTS } from '../mascot/lines';
 import { SECRET_IDS } from '../../domain/dialects/eggs';
 import { StatsBar } from '../components/StatsBar';
@@ -24,7 +24,7 @@ type Props = {
   readonly xp: number;
   readonly streak: number;
   readonly streakToday: boolean;
-  readonly greeting: { readonly text: string; readonly mood: ShellbyMood } | null;
+  readonly greeting: { readonly text: string; readonly mood: HermeMood } | null;
   readonly onStart: (lessonId: string) => void;
   readonly onSwitchOs: () => void;
 };
@@ -43,7 +43,7 @@ export function Home({ os, units, upcoming, completed, playable, unlocked, shell
 
   const currentIndex = currentId === null ? 0 : ordered.findIndex((l) => l.id === currentId);
   useEffect(() => {
-    // Early on, keep Shellby's greeting in view instead of scrolling it under the header.
+    // Early on, keep Herme's greeting in view instead of scrolling it under the header.
     if (currentIndex >= 3) currentRef.current?.scrollIntoView({ block: 'center', behavior: 'instant' });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -63,13 +63,13 @@ export function Home({ os, units, upcoming, completed, playable, unlocked, shell
       <main className="path-wrap">
         {greeting && (
           <div className="greeting">
-            <Shellby mood={greeting.mood} size={84} shell={shell} />
+            <Herme mood={greeting.mood} size={84} shell={shell} />
             <p className="speech speech-left">{greeting.text}</p>
           </div>
         )}
         <div className="extras">
           {shells.length > 1 && (
-            <div className="wardrobe" aria-label="Shellby's shells">
+            <div className="wardrobe" aria-label="Herme's shells">
               <span className="extras-label">Shells</span>
               {SHELLS.map((sh) =>
                 shells.includes(sh.kind) ? (
@@ -81,7 +81,7 @@ export function Home({ os, units, upcoming, completed, playable, unlocked, shell
                     aria-pressed={sh.kind === shell}
                     onClick={() => onWear(sh.kind)}
                   >
-                    <Shellby size={44} shell={sh.kind} title={sh.name} />
+                    <Herme size={44} shell={sh.kind} title={sh.name} />
                   </button>
                 ) : (
                   <span key={sh.kind} className="wardrobe-item is-locked" title="Finish a unit to earn this shell">
@@ -157,7 +157,7 @@ export function Home({ os, units, upcoming, completed, playable, unlocked, shell
                 })}
                 {ui === 0 && (
                   <li className="path-mascot" aria-hidden="true">
-                    <Shellby mood={totalDone === 0 ? 'idle' : 'smug'} size={110} shell={shell} />
+                    <Herme mood={totalDone === 0 ? 'idle' : 'smug'} size={110} shell={shell} />
                   </li>
                 )}
               </ol>
@@ -192,7 +192,7 @@ export function Home({ os, units, upcoming, completed, playable, unlocked, shell
             </section>
           );
         })}
-        <p className="path-end">More units are crawling in. Shellby is writing them by claw.</p>
+        <p className="path-end">More units are crawling in. Herme is writing them by claw.</p>
       </main>
     </div>
   );

@@ -1,5 +1,5 @@
-/** Shellby's lines, by event. One is picked at random so repeat plays feel alive. */
-export type ShellbyEvent =
+/** Herme's lines, by event. One is picked at random so repeat plays feel alive. */
+export type HermeEvent =
   | 'welcome'
   | 'error'
   | 'solved'
@@ -12,7 +12,7 @@ export type ShellbyEvent =
   | 'hatTrick'
   | 'combo';
 
-export const shellbyLines: Record<ShellbyEvent, readonly string[]> = {
+export const hermeLines: Record<HermeEvent, readonly string[]> = {
   welcome: [
     "Oh. A visitor. Fine. Let's learn some terminal.",
     "Welcome to my shell. Mind the hermit.",
@@ -73,12 +73,12 @@ export const shellbyLines: Record<ShellbyEvent, readonly string[]> = {
   hatTrick: ['Okay, show-off.', 'Three lessons in a row? Calm down.', "Someone's on a roll."],
 };
 
-export const pickLine = (event: ShellbyEvent, random: () => number = Math.random): string => {
-  const lines = shellbyLines[event];
+export const pickLine = (event: HermeEvent, random: () => number = Math.random): string => {
+  const lines = hermeLines[event];
   return lines[Math.floor(random() * lines.length)] ?? lines[0] ?? '';
 };
 
-/** What Shellby says when you find each easter egg. */
+/** What Herme says when you find each easter egg. */
 export const EGG_LINES: Readonly<Record<string, { readonly text: string; readonly mood: 'idle' | 'happy' | 'sad' | 'smug' }>> = {
   nuke: { text: '*faints* ... I am fine. Nice try. This is a simulation.', mood: 'sad' },
   editor: { text: 'Everyone gets stuck in an editor once. Now you know the way out.', mood: 'smug' },

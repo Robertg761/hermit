@@ -2,7 +2,7 @@ import type { SeedState } from '../../domain/machine';
 import type { Goal, Lesson, PerOs, Unit } from '../../domain/lessons/types';
 import { build, fill, learn, match, pick, px, same, task, typeAlong } from '../builders';
 
-/** Shellby's computer is crawling. Something is eating the CPU. */
+/** Herme's computer is crawling. Something is eating the CPU. */
 const busy: SeedState = {
   processes: [
     { pid: 4242, name: 'runaway', cpu: 99.2 },
@@ -69,7 +69,7 @@ export const unit5Lesson1: Lesson = {
     typeAlong({
       id: 'u5-l1-c2',
       uses: ['ps'],
-      prompt: same('Shellby\'s computer is crawling. List the running processes.'),
+      prompt: same('Herme\'s computer is crawling. List the running processes.'),
       seed: same(busy),
       goal: same({ kind: 'stdoutIncludes', text: 'runaway' }),
       line: px('ps aux', 'Get-Process'),
@@ -178,7 +178,7 @@ export const unit5Lesson1: Lesson = {
       goal: same(gone('runaway')),
       solutions: px([['ps aux', 'kill 4242'], ['kill 4242']], [['Get-Process', 'Stop-Process -Id 4242'], ['Stop-Process -Id 4242']]),
       hints: px(['List the processes, find the busy one\'s PID, stop it.', 'Type `ps aux`, then `kill 4242`.'], ['List the processes, find the busy one\'s Id, stop it.', 'Type `Get-Process`, then `Stop-Process -Id 4242`.']),
-      explain: same('Runaway caught. Shellby is impressed.'),
+      explain: same('Runaway caught. Herme is impressed.'),
     }),
     task({
       id: 'u5-l1-c11',
@@ -338,7 +338,7 @@ export const unit5Lesson2: Lesson = {
     task({
       id: 'u5-l2-c10',
       uses: ['script', 'allow-scripts'],
-      prompt: same('Shellby downloaded a build script onto a brand new computer. Get it to run.'),
+      prompt: same('Herme downloaded a build script onto a brand new computer. Get it to run.'),
       seed: same(fresh),
       goal: built,
       solutions: px(
@@ -502,7 +502,7 @@ export const unit5Lesson3: Lesson = {
         [['Start-Process pwsh -Verb RunAs', 'Stop-Process -Name bubbles', 'Stop-Process -Id 666'], ['Stop-Process -Name bubbles', 'Start-Process pwsh -Verb RunAs', 'Stop-Process -Id 666']],
       ),
       hints: px(['Bubbles by name, the updater as administrator.', 'Type `pkill bubbles`, then `sudo kill 666`.'], ['Bubbles by name, the updater from an Administrator window.', 'Type `Stop-Process -Name bubbles`, then `Start-Process pwsh -Verb RunAs`, then `Stop-Process -Id 666`.']),
-      explain: same('Spotless. Shellby retires to a nice rock.'),
+      explain: same('Spotless. Herme retires to a nice rock.'),
     }),
     task({
       id: 'u5-l3-c11',

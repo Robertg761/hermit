@@ -373,11 +373,11 @@ code {
   border-bottom: 0;
 }
 
-.shellby-happy {
+.herme-happy {
   animation: hop 500ms ease;
 }
 
-.shellby-sad {
+.herme-sad {
   animation: shake 360ms ease;
 }
 
@@ -504,7 +504,7 @@ code {
     height: 50vh;
   }
 
-  /* Shellby sits beside the bubble, right under the question, like a chat. */
+  /* Herme sits beside the bubble, right under the question, like a chat. */
   .buddy {
     order: -1;
     display: grid;
@@ -515,7 +515,7 @@ code {
     width: 100%;
   }
 
-  .buddy .shellby {
+  .buddy .herme {
     grid-column: 1;
     grid-row: 1;
     width: 64px;
@@ -540,7 +540,7 @@ code {
     border-left: 0;
   }
 
-  .buddy > :not(.speech, .shellby) {
+  .buddy > :not(.speech, .herme) {
     grid-column: 1 / -1;
   }
 
@@ -1660,7 +1660,7 @@ code {
 .ansi-white { color: #f2f2f2; }
 .ansi-black { color: #8a8a8a; }
 
-/* sudo rm -rf / : the screen flickers and Shellby faints */
+/* sudo rm -rf / : the screen flickers and Herme faints */
 .lesson.is-flicker {
   animation: flicker 700ms steps(2) 1;
 }

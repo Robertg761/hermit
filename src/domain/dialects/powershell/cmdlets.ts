@@ -396,7 +396,7 @@ const removeItem: Cmdlet = {
       for (const path of paths) {
         if (path.length <= 1) {
           effects.push({ kind: 'easterEgg', id: 'nuke' });
-          errors.push(`Remove-Item: Nice try. This is a simulation, and Shellby has hidden the drive.`);
+          errors.push(`Remove-Item: Nice try. This is a simulation, and Herme has hidden the drive.`);
           continue;
         }
         const node = getNode(s.root, path, ci);
@@ -451,7 +451,7 @@ const getHelp: Cmdlet = {
   params: [{ name: 'Name', kind: 'value', position: 0 }, { name: 'Examples', kind: 'switch' }, { name: 'Full', kind: 'switch' }, { name: 'Online', kind: 'switch' }],
   run: (b, _i, state) => {
     const name = str(b, 'Name') ?? 'Get-Help';
-    return ok(state, [{ type: 'string', value: `\nNAME\n    ${name}\n\nSYNOPSIS\n    Hermit's offline help is short: try the lesson hints, or Shellby.\n` }]);
+    return ok(state, [{ type: 'string', value: `\nNAME\n    ${name}\n\nSYNOPSIS\n    Hermit's offline help is short: try the lesson hints, or Herme.\n` }]);
   },
 };
 

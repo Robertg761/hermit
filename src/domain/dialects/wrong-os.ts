@@ -73,7 +73,7 @@ export const wrongOsRules: readonly WrongOsRule[] = [
     on: WIN,
     test: cmd('export'),
     explain: 'Environment variables look different here: `$env:NAME = "value"`.',
-    examples: ['export NAME=shellby'],
+    examples: ['export NAME=herme'],
   },
   {
     on: WIN,
@@ -218,7 +218,7 @@ export const wrongOsRules: readonly WrongOsRule[] = [
     on: POSIX,
     test: /(?:^|[;|&]\s*)\$env:/i,
     explain: 'That is PowerShell syntax. Here, set a variable with `export NAME=value` and read it with `$NAME`.',
-    examples: ['$env:NAME = "shellby"'],
+    examples: ['$env:NAME = "herme"'],
   },
   {
     on: POSIX,

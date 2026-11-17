@@ -16,9 +16,9 @@ import {
 import { HEARTS_PER_LESSON, availableHints } from '../../domain/lessons/runner';
 import type { ChallengeType, Lesson as LessonData } from '../../domain/lessons/types';
 import type { OS } from '../../domain/types';
-import { EGG_LINES, pickLine, type ShellbyEvent } from '../mascot/lines';
+import { EGG_LINES, pickLine, type HermeEvent } from '../mascot/lines';
 import { SECRET_IDS, isSecretId } from '../../domain/dialects/eggs';
-import { Shellby, type ShellKind, type ShellbyMood } from '../mascot/Shellby';
+import { Herme, type ShellKind, type HermeMood } from '../mascot/Herme';
 import { SHELL_LABEL } from '../os';
 import { sounds } from '../sound';
 import { Terminal, type TerminalReply } from '../terminal/Terminal';
@@ -39,10 +39,10 @@ type Props = {
   readonly shell?: ShellKind;
 };
 
-type Speech = { readonly mood: ShellbyMood; readonly text: string };
+type Speech = { readonly mood: HermeMood; readonly text: string };
 type Feedback = { readonly kind: 'correct' | 'wrong'; readonly xp: number; readonly correctAnswer?: string; readonly reason?: string } | null;
 
-const say = (event: ShellbyEvent, mood: ShellbyMood): Speech => ({ mood, text: pickLine(event) });
+const say = (event: HermeEvent, mood: HermeMood): Speech => ({ mood, text: pickLine(event) });
 
 const TYPE_BADGE: Record<ChallengeType, string> = {
   learn: 'New command',
@@ -139,7 +139,7 @@ export function Lesson({ lesson, os, dialect, onExit, onComplete, secrets = [], 
       return { stdout: r.stdout, stderr: r.stderr, clear };
     }
     const explainer = r.wrongOs ?? r.decoded;
-    const note = explainer === undefined ? undefined : `Shellby: ${explainer.replace(/`/g, '')}`;
+    const note = explainer === undefined ? undefined : `Herme: ${explainer.replace(/`/g, '')}`;
     if (event.kind === 'outOfHearts') {
       loseHeart();
       outOfHearts();
@@ -153,7 +153,7 @@ export function Lesson({ lesson, os, dialect, onExit, onComplete, secrets = [], 
     if (event.step.outcome === 'protected') {
       if (lost) loseHeart();
       setSpeech(say('protected', 'sad'));
-      return { stdout: r.stdout, stderr: r.stderr, note: '(Shellby put the files back. Try again.)' };
+      return { stdout: r.stdout, stderr: r.stderr, note: '(Herme put the files back. Try again.)' };
     }
     const ghost = challenge.type === 'typeAlong' ? challenge.solutions[os][0]?.[0] : undefined;
     if (ghost !== undefined && line.trim() !== '' && line.trim() !== ghost) {
@@ -206,7 +206,7 @@ export function Lesson({ lesson, os, dialect, onExit, onComplete, secrets = [], 
     setRanLines([
       { kind: 'cmd', prompt: dialect.prompt(runRef.current.attempt.machine), text: line },
       ...outputLines(res.stdout, res.stderr, res.exitCode),
-      ...(explainer !== undefined && !r.correct ? [{ kind: 'note' as const, text: `Shellby: ${explainer.replace(/`/g, '')}` }] : []),
+      ...(explainer !== undefined && !r.correct ? [{ kind: 'note' as const, text: `Herme: ${explainer.replace(/`/g, '')}` }] : []),
     ]);
     settle(r, challenge.solutions[os][0]?.[0] ?? '');
   };
@@ -388,7 +388,7 @@ export function Lesson({ lesson, os, dialect, onExit, onComplete, secrets = [], 
           <div className="speech">
             <Markdownish text={speech.text} />
           </div>
-          <Shellby mood={speech.mood} size={150} shell={shell} />
+          <Herme mood={speech.mood} size={150} shell={shell} />
           {hintsShown > 0 && (
             <ol className="hints">
               {hints.slice(0, hintsShown).map((h) => (
@@ -441,9 +441,9 @@ export function Lesson({ lesson, os, dialect, onExit, onComplete, secrets = [], 
       {restartNotice && (
         <div className="modal-backdrop">
           <div className="modal" role="alertdialog" aria-labelledby="restart-title">
-            <Shellby mood="sad" size={140} shell={shell} />
+            <Herme mood="sad" size={140} shell={shell} />
             <h3 id="restart-title">Out of hearts</h3>
-            <p>No timers, no waiting. Shellby refilled your hearts, and you pick up right here. (This lesson can't be Flawless now.)</p>
+            <p>No timers, no waiting. Herme refilled your hearts, and you pick up right here. (This lesson can't be Flawless now.)</p>
             <ContinueButton onClick={retry} label="Keep going" tone="correct" />
           </div>
         </div>

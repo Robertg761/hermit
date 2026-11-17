@@ -1,5 +1,5 @@
 import type { OS } from '../../domain/types';
-import { Shellby } from '../mascot/Shellby';
+import { Herme } from '../mascot/Herme';
 import { OS_LABEL, SHELL_LABEL } from '../os';
 import { ThreeShells } from '../components/ThreeShells';
 
@@ -17,7 +17,7 @@ export function Landing({ detected, current, available, onPick }: Props) {
   return (
     <main className="landing">
       <div className="landing-hero">
-        <Shellby mood="smug" size={200} />
+        <Herme mood="smug" size={200} />
         <div>
           <h1 className="wordmark">hermit</h1>
           <p className="pitch">Learn the real command line for your OS, one tiny lesson at a time.</p>

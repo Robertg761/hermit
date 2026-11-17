@@ -37,7 +37,7 @@ export function ThreeShells({ highlight }: { highlight: OS }) {
           </div>
         ))}
       </div>
-      <p className="three-note">Hermit teaches the one on your computer. Type a habit from another OS and Shellby will explain the difference.</p>
+      <p className="three-note">Hermit teaches the one on your computer. Type a habit from another OS and Herme will explain the difference.</p>
     </section>
   );
 }

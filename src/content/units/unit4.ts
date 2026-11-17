@@ -2,7 +2,7 @@ import type { SeedState } from '../../domain/machine';
 import type { Goal, Lesson, PerOs, Unit } from '../../domain/lessons/types';
 import { build, fill, learn, match, pick, predict, px, same, task, typeAlong } from '../builders';
 
-/** The tidepool: Shellby counts visitors and keeps an eye on the server. */
+/** The tidepool: Herme counts visitors and keeps an eye on the server. */
 const SERVER_LOG =
   [
     '08:00 server started',
@@ -173,7 +173,7 @@ export const unit4Lesson1: Lesson = {
     task({
       id: 'u4-l1-c10',
       uses: ['sort'],
-      prompt: same('Shellby wants the visitor list in order. Show it sorted.'),
+      prompt: same('Herme wants the visitor list in order. Show it sorted.'),
       seed,
       goal: same(out(SORTED)),
       solutions: px([['sort visitors.txt'], ['cat visitors.txt | sort']], [['Get-Content visitors.txt | Sort-Object']]),
@@ -326,7 +326,7 @@ export const unit4Lesson2: Lesson = {
     task({
       id: 'u4-l2-c10',
       uses: ['append'],
-      prompt: same('The backup finished, and Shellby wants that on record too. Add the backup line from logs/server.log to errors.txt without losing what is there.'),
+      prompt: same('The backup finished, and Herme wants that on record too. Add the backup line from logs/server.log to errors.txt without losing what is there.'),
       seed: same(withErrors),
       goal: all(file('errors.txt', 'disk almost full'), file('errors.txt', 'backup finished')),
       solutions: px([['grep backup logs/server.log >> errors.txt']], [['Select-String backup logs\\server.log >> errors.txt']]),
@@ -492,7 +492,7 @@ export const unit4Lesson3: Lesson = {
         [['Get-Content visitors.txt | Group-Object'], ['Get-Content visitors.txt | Group-Object | Sort-Object Count -Descending']],
       ),
       hints: px(['Sort first, then count repeats.', 'Type `sort visitors.txt | uniq -c`.'], ['Read the file and group it.', 'Type `Get-Content visitors.txt | Group-Object`.']),
-      explain: same('Crabs, 3 of them. Shellby is not surprised.'),
+      explain: same('Crabs, 3 of them. Herme is not surprised.'),
     }),
     task({
       id: 'u4-l3-c12',

@@ -27,7 +27,7 @@ Each row says what Duolingo does, where that comes from, and how Hermit translat
 | 9 | **Spaced repetition** | A model (half-life regression) estimates how fast each word fades from memory and schedules practice before you forget. [6][7] | Lightweight version: track each skill's last-practised date and success in `localStorage`, and offer a **Practice** button that pulls challenges for the weakest and most-faded skills. Stretch, see priorities. |
 | 10 | **Apply in a new context** | Lessons move from simple examples to the same pattern in new contexts. [2] | After the drills, each lesson ends with a **capstone Do** that needs two skills together in a situation the learner hasn't seen ("find the tidepool photo and go to its folder"). |
 | 11 | **Bite-size sessions** | Lessons take a few minutes. [2] | 8 to 10 challenges per lesson, most of them 10 to 20 seconds. A lesson should take 2 to 4 minutes. |
-| 12 | **Motivation and personality** | Points, streaks, encouragement, humour that makes content stick. [2] | Already in the spec: XP, streaks, hearts, Shellby. New: Shellby's lines can carry the mnemonics ("pwd is not your password. Please don't type your password here."). |
+| 12 | **Motivation and personality** | Points, streaks, encouragement, humour that makes content stick. [2] | Already in the spec: XP, streaks, hearts, Herme. New: Herme's lines can carry the mnemonics ("pwd is not your password. Please don't type your password here."). |
 
 The terminal adds three things a language course doesn't have, and they are where Hermit can be better than a straight copy:
 
@@ -56,7 +56,7 @@ Design notes:
 
 - **Wrong options are real misconceptions,** not random words: `pwd` meaning "password", `list` instead of `ls`, `cd up` instead of `cd ..`, `ls-a` without the space, `Get-Directory` on Windows. Each wrong option gets its own one-line reason, shown when picked.
 - **Build and Fill run for real.** The assembled line goes through the dialect and the normal goal check, so a different correct combination from the tiles also passes, consistent with the spec's "state, not string" rule.
-- **Type along still teaches typing.** If what they type doesn't match the ghost, the line runs anyway (it's a real terminal) and Shellby says "Close. Type the grey text exactly." No heart lost.
+- **Type along still teaches typing.** If what they type doesn't match the ghost, the line runs anyway (it's a real terminal) and Herme says "Close. Type the grey text exactly." No heart lost.
 - **Names are ours.** Use plain labels in the UI: "New command", "Type along", "Pick one", "Match", "Build it", "Fill the gap". No Duolingo names, colours or sounds (see the spec's brand rules).
 
 ## The error decoder
@@ -107,10 +107,10 @@ New: the prompt, running a command, `pwd`, reading a path. Burrow map on.
 | 2 | Learn | **pwd: where am I?** You're always standing in exactly one folder. `pwd` (print working directory) tells you which. | `pwd` | `Get-Location`. PowerShell commands are a verb and a noun: *Get* the *Location*. `pwd` also works. |
 | 3 | Type along | Type it and press Enter. Explain after: "That's a path, the address of a folder. Read it left to right: from the top, into `home`, into `you`." | `pwd` → `/home/you` | `Get-Location` → `C:\Users\you` |
 | 4 | Pick | What does `pwd` do? **Shows which folder you're in** / Shows your password / Lists the files here | | Same with `Get-Location`; wrong option "Gets your location on a map". |
-| 5 | Predict | Shellby is in his photos folder and types `pwd`. What prints? **`/home/you/photos`** / `/photos` / `/home/you` | seed cwd `photos` | `C:\Users\you\photos` / `C:\photos` / `C:\Users\you` |
+| 5 | Predict | Herme is in his photos folder and types `pwd`. What prints? **`/home/you/photos`** / `/photos` / `/home/you` | seed cwd `photos` | `C:\Users\you\photos` / `C:\photos` / `C:\Users\you` |
 | 6 | Learn | **Mistakes are safe.** If the terminal doesn't know a word, it says so and waits again. Nothing breaks. | | |
-| 7 | Fix | Shellby typed this. Run it to see the error, then fix it. Error decoder explains "command not found". | prefill `pdw` | prefill `Get-Locaton` |
-| 8 | Do | Shellby moved you while you weren't looking. Find out where you are. (Hint button visible.) Goal: output includes the path. | seed cwd `projects/game`; `pwd` | `Get-Location` or `pwd` |
+| 7 | Fix | Herme typed this. Run it to see the error, then fix it. Error decoder explains "command not found". | prefill `pdw` | prefill `Get-Locaton` |
+| 8 | Do | Herme moved you while you weren't looking. Find out where you are. (Hint button visible.) Goal: output includes the path. | seed cwd `projects/game`; `pwd` | `Get-Location` or `pwd` |
 
 ### Lesson 2: Look around
 
@@ -121,10 +121,10 @@ New: `ls`, flags, `ls -a`. Burrow map on.
 | 1 | Learn | **ls: what's here?** Lists what's inside the folder you're in, like opening it in File Explorer or Finder. | `ls` (list) | `Get-ChildItem`: *Get* the *child items*, the things inside. `ls` and `dir` also work. |
 | 2 | Type along | Type it. Explain after: folders and files both show up. Names ending in `.txt` or `.jpg` are files. | `ls` | `Get-ChildItem` |
 | 3 | Pick | You want to see what's in this folder. Which command? **`ls`** / `pwd` / `list` | | **`Get-ChildItem`** / `Get-Location` / `Get-Files` |
-| 4 | Do | You're in photos. Which photos does Shellby have? Goal: output includes `tidepool.jpg`. | seed cwd `photos` | |
+| 4 | Do | You're in photos. Which photos does Herme have? Goal: output includes `tidepool.jpg`. | seed cwd `photos` | |
 | 5 | Review: Pick | Which command tells you where you are? **`pwd`** / `ls` / `where` | | **`Get-Location`** / `Get-ChildItem` / `Get-Where` |
 | 6 | Learn | **Flags change how a command behaves.** They start with a dash, after a space. `ls -a` means list *all*. Names starting with a dot are hidden, and `-a` shows them. | `ls -a` | Windows calls these parameters. `Get-ChildItem -Force` forces hidden files to show. Windows hides files with a hidden setting, not a dot. |
-| 7 | Build | Build the command that reveals hidden files. It runs and shows `.shellby-secret`. | tiles: `ls` `-a` `pwd` `all` `a` | tiles: `Get-ChildItem` `-Force` `Get-Location` `-Show` `Force` |
+| 7 | Build | Build the command that reveals hidden files. It runs and shows `.herme-secret`. | tiles: `ls` `-a` `pwd` `all` `a` | tiles: `Get-ChildItem` `-Force` `Get-Location` `-Show` `Force` |
 | 8 | Match | `pwd` ↔ Where am I? · `ls` ↔ What's in here? · `ls -a` ↔ What's in here, hidden things too? | | `Get-Location`, `Get-ChildItem`, `Get-ChildItem -Force` |
 | 9 | Do (capstone) | Something is hiding in projects too. You're in projects. Find it. Goal: output includes the hidden name. | seed cwd `projects`; `ls -a` | `Get-ChildItem -Force` |
 
@@ -141,7 +141,7 @@ New: `cd folder`, `..`. Burrow map on; the "you are here" marker moves with ever
 | 5 | Learn | **`..` is the folder above.** Two dots always mean "one level up". `cd ..` climbs out. | `cd ..` | Same in PowerShell. |
 | 6 | Fill | You're in game. Go up one folder. `cd ___`: **`..`** / `up` / `.` / `back` | seed cwd `projects/game` | Same |
 | 7 | Predict | Starting at home: `cd projects/game`, `cd ..`, `pwd`. What prints? (existing `u1-l2-c4`) | | |
-| 8 | Fix | Shellby fumbled the spelling (existing `u1-l2-c5`, `cd projects/gaem`). Decoder explains "No such file or directory". | | |
+| 8 | Fix | Herme fumbled the spelling (existing `u1-l2-c5`, `cd projects/gaem`). Decoder explains "No such file or directory". | | |
 | 9 | Do (capstone) | You're in website. Get to the game folder next door. Goal: cwd is `projects/game`. | seed cwd `projects/website`; `cd ..` then `cd game`, or `cd ../game` | |
 
 ### Lesson 4: Shortcuts and details
@@ -157,7 +157,7 @@ New: `~` (home), `ls -l`. Burrow map available but collapsed.
 | 5 | Type along | List the photos folder with details. | seed cwd `photos`; `ls -l` | `Get-ChildItem` |
 | 6 | Pick | Which flag adds sizes and dates? **`-l`** / `-a` / `-size` | | Which column shows when a file last changed? **`LastWriteTime`** / `Mode` / `Length` |
 | 7 | Review: Match | `pwd` · `ls` · `ls -a` · `cd ..` · `cd ~` ↔ their meanings | | PowerShell equivalents |
-| 8 | Do (capstone) | Shellby lost his tidepool photo. Go to the folder it's in. Goal: cwd is `photos`. Hints: "Look around with `ls` first." | seed home | |
+| 8 | Do (capstone) | Herme lost his tidepool photo. Go to the folder it's in. Goal: cwd is `photos`. Hints: "Look around with `ls` first." | seed home | |
 | 9 | Review: Do | Something is hidden in your home folder. Find it. | `ls -a` | `Get-ChildItem -Force` |
 
 This adds roughly 17 Learn, Type along, Pick, Match, Build and Fill items to Unit 1 and reuses 5 of the current challenges.

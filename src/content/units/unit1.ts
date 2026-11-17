@@ -12,10 +12,10 @@ const burrow = (os: 'posix' | 'windows'): SeedState => ({
     'photos/beach.jpg': 'JPEG',
     'photos/tidepool.jpg': 'JPEG',
     ...(os === 'posix'
-      ? { '.shellby-secret': 'I was a snail once.\n', 'projects/.plan': 'Step 1: bigger shell.\n' }
-      : { 'shellby-secret.txt': 'I was a snail once.\n', 'projects/plan.txt': 'Step 1: bigger shell.\n' }),
+      ? { '.herme-secret': 'I was a snail once.\n', 'projects/.plan': 'Step 1: bigger shell.\n' }
+      : { 'herme-secret.txt': 'I was a snail once.\n', 'projects/plan.txt': 'Step 1: bigger shell.\n' }),
   },
-  ...(os === 'windows' ? { hidden: ['shellby-secret.txt', 'projects/plan.txt'] } : {}),
+  ...(os === 'windows' ? { hidden: ['herme-secret.txt', 'projects/plan.txt'] } : {}),
 });
 
 const seedAt = (cwd?: string): PerOs<SeedState> => {
@@ -102,7 +102,7 @@ export const unit1Lesson1: Lesson = {
     predict({
       id: 'u1-l1-c5',
       uses: ['pwd'],
-      prompt: same('Shellby is in his photos folder and types this. What prints?'),
+      prompt: same('Herme is in his photos folder and types this. What prints?'),
       seed: seedAt('photos'),
       command: px(['pwd'], ['Get-Location']),
       options: {
@@ -120,14 +120,14 @@ export const unit1Lesson1: Lesson = {
       uses: ['prompt'],
       seed: seedAt(),
       card: px(
-        { title: 'Mistakes are safe', body: "If the terminal doesn't know a word, it says so and gives you the prompt back. Nothing breaks. Read the message: it usually tells you what went wrong.", example: 'shellby' },
-        { title: 'Mistakes are safe', body: "If PowerShell doesn't know a word, it says so and gives you the prompt back. Nothing breaks. Read the message: it usually tells you what went wrong.", example: 'shellby' },
+        { title: 'Mistakes are safe', body: "If the terminal doesn't know a word, it says so and gives you the prompt back. Nothing breaks. Read the message: it usually tells you what went wrong.", example: 'herme' },
+        { title: 'Mistakes are safe', body: "If PowerShell doesn't know a word, it says so and gives you the prompt back. Nothing breaks. Read the message: it usually tells you what went wrong.", example: 'herme' },
       ),
     }),
     task({
       id: 'u1-l1-c7',
       uses: ['pwd', 'errors'],
-      prompt: same('Shellby typed this and got an error. Press Enter to see it, then fix the command.'),
+      prompt: same('Herme typed this and got an error. Press Enter to see it, then fix the command.'),
       seed: seedAt(),
       prefill: px('pdw', 'Get-Locaton'),
       goal: printsPath(),
@@ -139,7 +139,7 @@ export const unit1Lesson1: Lesson = {
       id: 'u1-l1-c8',
       uses: ['pwd'],
       openHint: true,
-      prompt: same("Shellby moved you while you weren't looking. Find out where you are."),
+      prompt: same("Herme moved you while you weren't looking. Find out where you are."),
       seed: seedAt('projects/game'),
       goal: printsPath('projects/game'),
       solutions: px([['pwd']], [['Get-Location'], ['pwd']]),
@@ -200,7 +200,7 @@ export const unit1Lesson2: Lesson = {
       id: 'u1-l2-c4',
       uses: ['ls'],
       openHint: true,
-      prompt: same('You are in the photos folder. Which photos does Shellby have?'),
+      prompt: same('You are in the photos folder. Which photos does Herme have?'),
       seed: seedAt('photos'),
       goal: same({ kind: 'stdoutIncludes', text: 'tidepool.jpg' }),
       solutions: px([['ls']], [['Get-ChildItem'], ['ls'], ['dir']]),
@@ -243,11 +243,11 @@ export const unit1Lesson2: Lesson = {
       uses: ['ls-a'],
       prompt: same('Build the command that reveals hidden files.'),
       seed: seedAt(),
-      goal: px({ kind: 'stdoutIncludes', text: '.shellby-secret' }, { kind: 'stdoutIncludes', text: 'shellby-secret.txt' }),
+      goal: px({ kind: 'stdoutIncludes', text: '.herme-secret' }, { kind: 'stdoutIncludes', text: 'herme-secret.txt' }),
       tokens: px(['all', 'ls', 'pwd', '-a', 'a'], ['-Show', 'Get-ChildItem', 'Force', 'Get-Location', '-Force']),
       solutions: px([['ls -a']], [['Get-ChildItem -Force']]),
       hints: same(['Command first, then the flag with its dash.']),
-      explain: px('There it is: `.shellby-secret`. The dot at the start is what hides it.', 'There it is: `shellby-secret.txt`, with an `h` (hidden) in its Mode.'),
+      explain: px('There it is: `.herme-secret`. The dot at the start is what hides it.', 'There it is: `herme-secret.txt`, with an `h` (hidden) in its Mode.'),
     }),
     match({
       id: 'u1-l2-c8',
@@ -274,13 +274,13 @@ export const unit1Lesson2: Lesson = {
       goal: px({ kind: 'stdoutIncludes', text: '.plan' }, { kind: 'stdoutIncludes', text: 'plan.txt' }),
       solutions: px([['ls -a'], ['ls -A']], [['Get-ChildItem -Force'], ['ls -Force'], ['dir -Force']]),
       hints: px(['A plain list hides it. Add the flag for *all*.', 'Type `ls -a`.'], ['A plain list hides it. Force it to show.', 'Type `Get-ChildItem -Force`.']),
-      explain: px('Shellby has a `.plan`. Hidden files often hold settings and notes.', 'Shellby has a hidden `plan.txt`. Hidden files often hold settings and notes.'),
+      explain: px('Herme has a `.plan`. Hidden files often hold settings and notes.', 'Herme has a hidden `plan.txt`. Hidden files often hold settings and notes.'),
     }),
     task({
       id: 'u1-l2-c10',
       uses: ['pwd'],
       review: true,
-      prompt: same('Before you go: Shellby says you are somewhere in the burrow. Check exactly where.'),
+      prompt: same('Before you go: Herme says you are somewhere in the burrow. Check exactly where.'),
       seed: seedAt('photos'),
       goal: printsPath('photos'),
       solutions: px([['pwd']], [['Get-Location'], ['pwd']]),
@@ -368,7 +368,7 @@ export const unit1Lesson3: Lesson = {
     predict({
       id: 'u1-l3-c7',
       uses: ['cd', 'cd-up', 'pwd'],
-      prompt: same('Starting at home, Shellby types these lines. What does the last one print?'),
+      prompt: same('Starting at home, Herme types these lines. What does the last one print?'),
       seed: seedAt(),
       command: px(['cd projects/game', 'cd ..', 'pwd'], ['cd projects\\game', 'cd ..', 'Get-Location']),
       options: {
@@ -383,7 +383,7 @@ export const unit1Lesson3: Lesson = {
     task({
       id: 'u1-l3-c8',
       uses: ['cd', 'errors'],
-      prompt: same('Shellby tried to jump into the game folder but fumbled the spelling. Run it to read the error, then fix it.'),
+      prompt: same('Herme tried to jump into the game folder but fumbled the spelling. Run it to read the error, then fix it.'),
       seed: seedAt(),
       prefill: px('cd projects/gaem', 'cd projects\\gaem'),
       goal: same({ kind: 'cwdIs', path: 'projects/game' }),
@@ -527,7 +527,7 @@ export const unit1Lesson4: Lesson = {
     task({
       id: 'u1-l4-c8',
       uses: ['ls', 'cd'],
-      prompt: same('Shellby lost his tidepool photo. Go to the folder it is in.'),
+      prompt: same('Herme lost his tidepool photo. Go to the folder it is in.'),
       seed: seedAt(),
       goal: same({ kind: 'cwdIs', path: 'photos' }),
       solutions: px([['ls', 'cd photos'], ['cd photos']], [['Get-ChildItem', 'cd photos'], ['cd photos']]),
@@ -543,10 +543,10 @@ export const unit1Lesson4: Lesson = {
       review: true,
       prompt: same('Something is hidden in your home folder. Find it.'),
       seed: seedAt(),
-      goal: px({ kind: 'stdoutIncludes', text: '.shellby-secret' }, { kind: 'stdoutIncludes', text: 'shellby-secret.txt' }),
+      goal: px({ kind: 'stdoutIncludes', text: '.herme-secret' }, { kind: 'stdoutIncludes', text: 'herme-secret.txt' }),
       solutions: px([['ls -a'], ['ls -la'], ['ls -A']], [['Get-ChildItem -Force'], ['ls -Force'], ['dir -Force']]),
       hints: px(['Hidden files need a flag.', 'Type `ls -a`.'], ['Hidden files need a parameter.', 'Type `Get-ChildItem -Force`.']),
-      explain: same('Shellby was a snail once. Now you know.'),
+      explain: same('Herme was a snail once. Now you know.'),
     }),
   ],
 };

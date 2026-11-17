@@ -2,7 +2,7 @@ import type { SeedState } from '../../domain/machine';
 import type { Goal, Lesson, PerOs, Unit } from '../../domain/lessons/types';
 import { build, fill, learn, match, pick, predict, px, same, task, typeAlong } from '../builders';
 
-/** Shellby's workshop: a home folder that needs tidying. */
+/** Herme's workshop: a home folder that needs tidying. */
 const workshop: SeedState = {
   files: {
     'recipe.txt': 'Kelp chips\n1. Find kelp.\n2. Dry kelp.\n3. Crunch.\n',
@@ -74,7 +74,7 @@ export const unit2Lesson1: Lesson = {
       id: 'u2-l1-c4',
       uses: ['ls'],
       review: true,
-      prompt: same('This is Shellby\'s workshop. Look around: is there a folder called archive?'),
+      prompt: same('This is Herme\'s workshop. Look around: is there a folder called archive?'),
       seed: seed(),
       goal: same({ kind: 'stdoutIncludes', text: 'archive' }),
       solutions: px([['ls']], [['Get-ChildItem'], ['ls'], ['dir']]),
@@ -107,7 +107,7 @@ export const unit2Lesson1: Lesson = {
       tokens: px(['mkdir', 'todo.txt', 'new', 'touch', 'file'], ['-File', 'todo.txt', 'mkdir', 'New-Item', 'touch']),
       solutions: px([['touch todo.txt']], [['New-Item todo.txt']]),
       hints: px(['`mkdir` would make a *folder* called todo.txt.'], ['`mkdir` would make a *folder* called todo.txt, and PowerShell has no `touch`.']),
-      explain: same('An empty file, ready for Shellby\'s to-do list.'),
+      explain: same('An empty file, ready for Herme\'s to-do list.'),
     }),
     match({
       id: 'u2-l1-c7',
@@ -171,7 +171,7 @@ export const unit2Lesson2: Lesson = {
     typeAlong({
       id: 'u2-l2-c2',
       uses: ['cat'],
-      prompt: same('Print Shellby\'s recipe.'),
+      prompt: same('Print Herme\'s recipe.'),
       seed: seed(),
       goal: same({ kind: 'stdoutIncludes', text: 'Kelp chips' }),
       line: px('cat recipe.txt', 'Get-Content recipe.txt'),
@@ -193,7 +193,7 @@ export const unit2Lesson2: Lesson = {
       id: 'u2-l2-c4',
       uses: ['cat'],
       openHint: true,
-      prompt: same('What did Shellby write in draft.txt?'),
+      prompt: same('What did Herme write in draft.txt?'),
       seed: seed(),
       goal: same({ kind: 'stdoutIncludes', text: 'bigger shell' }),
       solutions: px([['cat draft.txt']], [['Get-Content draft.txt'], ['cat draft.txt'], ['type draft.txt']]),
@@ -204,7 +204,7 @@ export const unit2Lesson2: Lesson = {
       id: 'u2-l2-c5',
       uses: ['cd', 'ls'],
       review: true,
-      prompt: same('Shellby keeps code in the src folder. Go in and see which files are there.'),
+      prompt: same('Herme keeps code in the src folder. Go in and see which files are there.'),
       seed: seed(),
       goal: same({ kind: 'stdoutIncludes', text: 'util.js' }),
       solutions: px([['cd src', 'ls'], ['ls src']], [['cd src', 'Get-ChildItem'], ['Get-ChildItem src'], ['ls src']]),
@@ -244,7 +244,7 @@ export const unit2Lesson2: Lesson = {
     task({
       id: 'u2-l2-c8',
       uses: ['touch', 'quotes'],
-      prompt: same('Shellby wants ONE file called party plan.txt, with a space in the name. This command gets it wrong. Fix it.'),
+      prompt: same('Herme wants ONE file called party plan.txt, with a space in the name. This command gets it wrong. Fix it.'),
       seed: seed(),
       prefill: px('touch party plan.txt', 'New-Item party plan.txt'),
       goal: fileExists('party plan.txt'),
@@ -408,7 +408,7 @@ export const unit2Lesson3: Lesson = {
       goal: dirExists('drafts'),
       solutions: px([['mkdir drafts']], [['mkdir drafts'], ['New-Item -ItemType Directory drafts']]),
       hints: same(['Make a directory.', 'Type `mkdir drafts`.']),
-      explain: same('Empty for now. Shellby has plans.'),
+      explain: same('Empty for now. Herme has plans.'),
     }),
   ],
 };
@@ -458,7 +458,7 @@ export const unit2Lesson4: Lesson = {
       goal: same({ kind: 'fileContains', path: 'important-backup.txt', text: 'shell insurance' }),
       solutions: px([['cp important.txt important-backup.txt']], [['Copy-Item important.txt important-backup.txt'], ['cp important.txt important-backup.txt']]),
       hints: px(['Copy: from, then to.', 'Type `cp important.txt important-backup.txt`.'], ['Copy: from, then to.', 'Type `Copy-Item important.txt important-backup.txt`.']),
-      explain: same('Backups first. Shellby approves.'),
+      explain: same('Backups first. Herme approves.'),
     }),
     learn({
       id: 'u2-l4-c5',
@@ -492,7 +492,7 @@ export const unit2Lesson4: Lesson = {
     task({
       id: 'u2-l4-c7',
       uses: ['rm', 'recursive', 'errors'],
-      prompt: same('Shellby wants the junk folder and everything in it gone. This command fails. Run it, read the error, then fix it.'),
+      prompt: same('Herme wants the junk folder and everything in it gone. This command fails. Run it, read the error, then fix it.'),
       seed: seed(),
       protectedPaths: ['important.txt'],
       prefill: px('rm junk', 'rm -rf junk'),
@@ -535,13 +535,13 @@ export const unit2Lesson4: Lesson = {
       goal: same({ kind: 'all', goals: [{ kind: 'notExists', path: 'junk' }, { kind: 'notExists', path: 'junk.txt' }] }),
       solutions: px([['rm junk.txt', 'rm -r junk'], ['rm -r junk junk.txt']], [['Remove-Item junk.txt', 'Remove-Item junk -Recurse'], ['rm junk.txt', 'rm junk -Recurse']]),
       hints: px(['Two things to delete: a file and a folder.', 'Type `rm junk.txt`, then `rm -r junk`.'], ['Two things to delete: a file and a folder.', 'Type `Remove-Item junk.txt`, then `Remove-Item junk -Recurse`.']),
-      explain: same('The workshop is tidy. Shellby is weeping (happily).'),
+      explain: same('The workshop is tidy. Herme is weeping (happily).'),
     }),
     predict({
       id: 'u2-l4-c10',
       uses: ['mkdir', 'ls'],
       review: true,
-      prompt: same('Shellby runs these two lines. What does the second one print?'),
+      prompt: same('Herme runs these two lines. What does the second one print?'),
       seed: seed(),
       command: px(['mkdir archive/2026', 'ls archive'], ['mkdir archive\\2026', '(Get-ChildItem archive).Name']),
       options: px(['archive', '2026', 'archive/2026'], ['archive', '2026', 'archive\\2026']),

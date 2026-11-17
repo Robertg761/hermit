@@ -56,7 +56,7 @@ const EGGS: readonly Egg[] = [
       stderr:
         os === 'linux' && !line.includes('--no-preserve-root')
           ? "rm: it is dangerous to operate recursively on '/'\nrm: use --no-preserve-root to override this failsafe"
-          : 'Nice try. This is a simulation, and Shellby has hidden the drive.',
+          : 'Nice try. This is a simulation, and Herme has hidden the drive.',
       exitCode: 1,
     }),
   },
@@ -65,11 +65,11 @@ const EGGS: readonly Egg[] = [
     test: (line, os) => (posix(os) ? /^(sudo\s+)?(vim?|nvim|nano|emacs)(\s|$)/.test(line.trim()) : /^notepad(\.exe)?(\s|$)/i.test(line.trim())),
     run: (line, os) => {
       const name = words(line).find((w) => w !== 'sudo') ?? 'vim';
-      if (os === 'windows') return { stdout: 'Notepad opened in another window. Shellby closed it, because this is a simulation.\n', stderr: '', exitCode: 0 };
-      if (name === 'nano') return { stdout: 'nano is the friendly one: the shortcuts are listed at the bottom. Ctrl+X leaves.\n(Shellby pressed Ctrl+X for you.)\n', stderr: '', exitCode: 0 };
-      if (name === 'emacs') return { stdout: 'emacs is a whole operating system. Ctrl+X then Ctrl+C leaves.\n(Shellby pressed them for you.)\n', stderr: '', exitCode: 0 };
+      if (os === 'windows') return { stdout: 'Notepad opened in another window. Herme closed it, because this is a simulation.\n', stderr: '', exitCode: 0 };
+      if (name === 'nano') return { stdout: 'nano is the friendly one: the shortcuts are listed at the bottom. Ctrl+X leaves.\n(Herme pressed Ctrl+X for you.)\n', stderr: '', exitCode: 0 };
+      if (name === 'emacs') return { stdout: 'emacs is a whole operating system. Ctrl+X then Ctrl+C leaves.\n(Herme pressed them for you.)\n', stderr: '', exitCode: 0 };
       return {
-        stdout: `~\n~\n~\n~                 You opened ${name}. Many enter. Few leave.\n~\n(Shellby typed :q! for you. Remember it: press Esc, then type :q! and Enter.)\n`,
+        stdout: `~\n~\n~\n~                 You opened ${name}. Many enter. Few leave.\n~\n(Herme typed :q! for you. Remember it: press Esc, then type :q! and Enter.)\n`,
         stderr: '',
         exitCode: 0,
       };

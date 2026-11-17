@@ -3,7 +3,7 @@ import { Confetti } from '../components/Confetti';
 import { CountUp } from '../components/CountUp';
 import { Flame } from '../components/StatsBar';
 import { pickLine } from '../mascot/lines';
-import { SHELLS, Shellby, type ShellKind } from '../mascot/Shellby';
+import { SHELLS, Herme, type ShellKind } from '../mascot/Herme';
 import { sounds } from '../sound';
 
 type Props = {
@@ -14,7 +14,7 @@ type Props = {
   readonly lessonsToday: number;
   readonly onContinue: () => void;
   readonly shell: ShellKind;
-  /** Set when this lesson finished a unit: Shellby moves into this shell. */
+  /** Set when this lesson finished a unit: Herme moves into this shell. */
   readonly newShell: ShellKind | null;
   readonly nextTitle: string | null;
   readonly onNext: () => void;
@@ -29,13 +29,13 @@ export function LessonComplete({ xp, clean, total, streak, lessonsToday, onConti
     <main className="complete">
       <Confetti />
       <div className={`complete-hero${reward !== undefined ? ' is-new-shell' : ''}`}>
-        <Shellby mood="happy" size={200} shell={shell} />
+        <Herme mood="happy" size={200} shell={shell} />
       </div>
       {reward !== undefined ? (
         <>
           <h1>Unit complete!</h1>
           <p className="complete-line">
-            New shell unlocked: <strong>{reward.name}</strong>. {reward.line} Shellby has already moved in.
+            New shell unlocked: <strong>{reward.name}</strong>. {reward.line} Herme has already moved in.
           </p>
         </>
       ) : (

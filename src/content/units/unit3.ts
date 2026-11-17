@@ -2,7 +2,7 @@ import type { SeedState } from '../../domain/machine';
 import type { Goal, Lesson, PerOs, Unit } from '../../domain/lessons/types';
 import { build, fill, learn, match, pick, predict, px, same, task, typeAlong } from '../builders';
 
-/** Shellby's detective case: a project with notes, code, logs and a buried treasure map. */
+/** Herme's detective case: a project with notes, code, logs and a buried treasure map. */
 const SERVER_LOG = [
   '08:00 server started',
   '08:01 user sam logged in',
@@ -20,7 +20,7 @@ const SERVER_LOG = [
 
 const caseFiles: SeedState = {
   files: {
-    'notes.txt': "Shellby's notes\nTODO: buy kelp\nCall mom\nTODO: polish shell\n",
+    'notes.txt': "Herme's notes\nTODO: buy kelp\nCall mom\nTODO: polish shell\n",
     'shopping.txt': 'Kelp chips\nsea salt\nKELP flakes\nkelp\n',
     'app.js': 'const shell = "big";\n// TODO: fix the crab bug\nconsole.log(shell);\n',
     'src/crab.js': '// TODO: make crab faster\nexport const speed = 1;\n',
@@ -65,7 +65,7 @@ export const unit3Lesson1: Lesson = {
     typeAlong({
       id: 'u3-l1-c2',
       uses: ['grep'],
-      prompt: same('Find the to-dos in Shellby\'s notes.'),
+      prompt: same('Find the to-dos in Herme\'s notes.'),
       seed: seed(),
       goal: shows('polish shell', 'Call mom'),
       line: px('grep TODO notes.txt', 'Select-String TODO notes.txt'),
@@ -135,7 +135,7 @@ export const unit3Lesson1: Lesson = {
       tokens: px(['TODO', 'cat', '-r', '.', 'grep', '-a'], ['TODO', '-Force', 'Select-String', '|', '-Recurse', 'Get-ChildItem']),
       solutions: px([['grep -r TODO .']], [['Get-ChildItem -Recurse | Select-String TODO']]),
       hints: px(['Command, flag, word, where.'], ['List everything, pipe it, search it.']),
-      explain: same('Four to-dos across three files. Shellby has been busy not doing things.'),
+      explain: same('Four to-dos across three files. Herme has been busy not doing things.'),
     }),
     match({
       id: 'u3-l1-c8',
@@ -232,12 +232,12 @@ export const unit3Lesson2: Lesson = {
       id: 'u3-l2-c4',
       uses: ['find'],
       openHint: true,
-      prompt: same('Shellby buried a file called treasure.map somewhere. Find out which folder it is in.'),
+      prompt: same('Herme buried a file called treasure.map somewhere. Find out which folder it is in.'),
       seed: seed(),
       goal: px({ kind: 'stdoutIncludes', text: 'cave/treasure.map' }, { kind: 'stdoutIncludes', text: 'rocks\\cave' }),
       solutions: px([['find . -name treasure.map'], ['find . -name "*.map"']], [['Get-ChildItem -Recurse -Filter treasure.map'], ['Get-ChildItem -Recurse -Filter *.map']]),
       hints: px(['Search by name, starting here.', 'Type `find . -name treasure.map`.'], ['List everything, filtered by name.', 'Type `Get-ChildItem -Recurse -Filter treasure.map`.']),
-      explain: same('beach, then rocks, then cave. Three folders deep. Classic Shellby.'),
+      explain: same('beach, then rocks, then cave. Three folders deep. Classic Herme.'),
     }),
     task({
       id: 'u3-l2-c5',
@@ -453,7 +453,7 @@ export const unit3Lesson3: Lesson = {
       goal: same({ kind: 'all', goals: [{ kind: 'stdoutIncludes', text: 'make crab faster' }, { kind: 'stdoutIncludes', text: 'buy kelp' }] }),
       solutions: px([['grep -r TODO .'], ['grep -r TODO']], [['Get-ChildItem -Recurse | Select-String TODO']]),
       hints: px(['Search everywhere, starting here.', 'Type `grep -r TODO .`.'], ['List everything, then search it.', 'Type `Get-ChildItem -Recurse | Select-String TODO`.']),
-      explain: same('Four to-dos. Shellby says they are "aspirational".'),
+      explain: same('Four to-dos. Herme says they are "aspirational".'),
     }),
   ],
 };

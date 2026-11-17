@@ -4,7 +4,7 @@ Nov 16, 2026 · @Robert
 
 ## Overview
 
-Hermit is a browser game that teaches the command line the way Duolingo teaches languages: short lessons, XP, streaks, hearts and a mascot that guilt-trips you. The twist is that you pick your OS first, and every lesson uses that OS's real commands: Bash on Linux, zsh on macOS, PowerShell on Windows. "Hermit" is a working name; the mascot is Shellby, an original hermit crab (it lives in a shell).
+Hermit is a browser game that teaches the command line the way Duolingo teaches languages: short lessons, XP, streaks, hearts and a mascot that guilt-trips you. The twist is that you pick your OS first, and every lesson uses that OS's real commands: Bash on Linux, zsh on macOS, PowerShell on Windows. "Hermit" is a working name; the mascot is Herme, an original hermit crab (renamed from Shellby on Nov 17).
 
 It's the entry for Hackyard Yard #7, theme "Remix": take something that exists and rebuild it your way. The remix here is Duolingo's learning loop applied to the terminal.
 
@@ -37,10 +37,10 @@ The core loop: pick your OS, open a lesson, type real commands into a fake termi
 
 ### Screens
 
-1. **Landing.** One-line pitch, Shellby, and three big buttons: Linux, macOS, Windows. Pre-highlight the visitor's OS from the user agent. A smaller link below: "Switching OS? Try Rosetta mode."
+1. **Landing.** One-line pitch, Herme, and three big buttons: Linux, macOS, Windows. Pre-highlight the visitor's OS from the user agent. A smaller link below: "Switching OS? Try Rosetta mode."
 2. **Skill tree.** Units as a vertical path of lesson nodes. A node unlocks when the one before it is done. Header shows OS, XP, streak flame and a switch-OS button.
-3. **Lesson.** Challenge prompt on top, terminal below, Shellby in a corner reacting. 3 hearts per lesson and a progress bar across the top.
-4. **Lesson complete.** XP earned, streak update, a Shellby line, "Next lesson" button.
+3. **Lesson.** Challenge prompt on top, terminal below, Herme in a corner reacting. 3 hearts per lesson and a progress bar across the top.
+4. **Lesson complete.** XP earned, streak update, a Herme line, "Next lesson" button.
 
 ### Challenge types
 
@@ -69,9 +69,9 @@ The core loop: pick your OS, open a lesson, type real commands into a fake termi
 
 The learner picks "I know" and "Teach me" (for example, Linux to Windows). Lessons come from the "Teach me" OS, and each challenge shows the known-OS command as a ghost hint ("On Linux you'd type `ls -a`"). Translate challenges appear in every lesson. The data already holds every OS's commands for every challenge, so this mode is mostly UI.
 
-### Shellby
+### Herme
 
-An original hermit crab drawn as inline SVG with five states: idle, happy, sad, smug, asleep. Do not use anything resembling Duolingo's owl, green palette, name or sounds. Shellby reacts to events with short lines, for example:
+An original hermit crab drawn as inline SVG with five states: idle, happy, sad, smug, asleep. Do not use anything resembling Duolingo's owl, green palette, name or sounds. Herme reacts to events with short lines, for example:
 
 - Wrong-OS command: "That's Linux talk. In PowerShell we say `Remove-Item`."
 - Lesson complete: "Not bad. My shell is slightly less ashamed of you."
@@ -89,7 +89,7 @@ Keep 3 to 5 lines per event and pick one at random so repeat plays feel alive.
 
 ### Easter eggs (cheap delight for voters)
 
-- `sudo rm -rf /` or `Remove-Item C:\ -Recurse -Force`: Shellby faints, the screen flickers, then "Nice try. This is a simulation."
+- `sudo rm -rf /` or `Remove-Item C:\ -Recurse -Force`: Herme faints, the screen flickers, then "Nice try. This is a simulation."
 - `exit`: "You can't leave. You have a streak."
 - `vim`: a one-challenge bonus lesson called "How do I exit vim".
 - `say hello` on macOS actually speaks, using the browser's speech synthesis.
@@ -138,7 +138,7 @@ src/
   ui/
     terminal/            # xterm wrapper and line editor
     screens/             # Landing, SkillTree, Lesson, LessonComplete
-    mascot/              # Shellby SVG and lines
+    mascot/              # Herme SVG and lines
 api/
   hint.ts                # Vercel function
 ```
@@ -247,7 +247,7 @@ Runner flow after each Enter: run the line through the dialect, then apply heart
 
 - `POST /api/hint` with `{ os, prompt, command, stderr, attempt }`. Returns `{ hint }`.
 - The function calls `claude-haiku-5-5` with `max_tokens: 150` and a 4 second timeout. On timeout or error the client uses the challenge's canned hint.
-- System prompt: you are Shellby, a sarcastic but kind hermit crab teaching the {os} terminal. Explain in at most 2 short sentences why the command failed and what to look at. Do not give the full answer unless attempt is 3 or more. Use only {os} syntax.
+- System prompt: you are Herme, a sarcastic but kind hermit crab teaching the {os} terminal. Explain in at most 2 short sentences why the command failed and what to look at. Do not give the full answer unless attempt is 3 or more. Use only {os} syntax.
 - The key lives in the Vercel env var `ANTHROPIC_API_KEY`, never in client code. Add a simple in-memory per-IP limit of 30 requests per 10 minutes.
 
 ### Persistence
@@ -407,13 +407,13 @@ Goal: the minimum shippable entry. If Thursday disappears, this ships.
 1. Commands for units 3 to 5: `grep` (`-r`), `find -name`, `head`, `tail`, `wc -l`, `sort`, `uniq`, pipes, `>`, `>>`, `&&`, `;`, `ps`, `pgrep`, `kill`, `pkill`, `chmod`, `sudo`, and in PowerShell `Select-String`, `Where-Object`, `Sort-Object`, `Select-Object`, `Measure-Object`, `Get-Process`, `Stop-Process`, `Set-ExecutionPolicy`, `Start-Process`.
 2. Units 3 to 5 content for all three OSes, including Predict and Fix challenges.
 3. Progress: XP, streak, per-OS tracks, saved through the storage provider.
-4. Shellby: SVG with five states, event lines, reactions wired to the runner.
+4. Herme: SVG with five states, event lines, reactions wired to the runner.
 
 Acceptance:
 
 - [ ] Units 1 to 5 playable on all three OSes
 - [ ] Progress survives a reload
-- [ ] Shellby reacts to a wrong command, a success and a completed lesson
+- [ ] Herme reacts to a wrong command, a success and a completed lesson
 - [ ] Robert has played Unit 1 on each OS and checked the commands against his real Arch, Windows 11 and M1 Mac machines
 
 ### Phase 4: Stretch and polish (Thu)
@@ -436,7 +436,7 @@ Acceptance:
 Feature freeze at 10 am NST. Submit by noon to leave a buffer.
 
 - [ ] README: one-line pitch, GIF, live link, how to run locally, stack, what is simulated and what isn't
-- [ ] A 60-second demo video: pick Windows, fail with `rm -rf`, Shellby roasts you, fix it, finish a lesson, flip to Rosetta mode
+- [ ] A 60-second demo video: pick Windows, fail with `rm -rf`, Herme roasts you, fix it, finish a lesson, flip to Rosetta mode
 - [ ] Final deploy, then a cold playthrough in a private window on each browser
 - [ ] Submit the repo and demo on Hackyard
 
@@ -462,7 +462,7 @@ If the schedule slips, cut from the top of this list first:
 5. Unit 6
 6. Predict and Fix challenge types (keep Do only)
 
-Never cut: all three OSes for units 1 to 5, state-based checking, the wrong-OS explanations, Shellby.
+Never cut: all three OSes for units 1 to 5, state-based checking, the wrong-OS explanations, Herme.
 
 ### Risks
 
@@ -505,4 +505,4 @@ Read this whole spec before starting, then work one phase at a time. These rules
 ### Brand
 
 - The remix is the learning loop, not the brand. No owl, no Duolingo green, name, fonts, sounds or copy.
-- Shellby is an original hermit crab drawn from scratch in SVG.
+- Herme is an original hermit crab drawn from scratch in SVG.

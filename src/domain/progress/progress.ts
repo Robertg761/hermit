@@ -14,7 +14,7 @@ export type Progress = {
   readonly today: { readonly day: string | null; readonly lessons: number };
   /** Easter eggs found, across all OSes. */
   readonly secrets: readonly string[];
-  /** The shell Shellby wears, picked from the ones earned. null means the newest. */
+  /** The shell Herme wears, picked from the ones earned. null means the newest. */
   readonly wearing: string | null;
 };
 
@@ -180,6 +180,6 @@ export const playableLessons = (units: readonly { readonly id: string; readonly 
   return open;
 };
 
-/** Units fully finished on a track, in course order. Each one earns Shellby a new shell. */
+/** Units fully finished on a track, in course order. Each one earns Herme a new shell. */
 export const finishedUnits = (units: readonly { readonly id: string; readonly lessons: readonly { readonly id: string }[] }[], track: Track): readonly string[] =>
   units.filter((u) => u.lessons.every((l) => track.completed.includes(l.id))).map((u) => u.id);
