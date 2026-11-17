@@ -194,7 +194,7 @@ export function Terminal({ os, sessionKey, prompt, onLine, banner, prefill, disa
             if (reply.clear) term.clear();
             if (reply.stdout) term.write(toCrlf(reply.stdout.endsWith('\n') ? reply.stdout : reply.stdout + '\n'));
             if (reply.stderr) term.write(RED + toCrlf(reply.stderr) + RESET + '\r\n');
-            if (reply.note) term.write(DIM + toCrlf(reply.note) + RESET + '\r\n');
+            if (reply.note) term.write(DIM + toCrlf(wrapWords(reply.note, term.cols)) + RESET + '\r\n');
             if (reply.clear) term.write(`${ESC}[2J${ESC}[H`);
             rowsRef.current = { cursor: 0, end: 0 };
             redraw(term);
@@ -254,7 +254,9 @@ export function Terminal({ os, sessionKey, prompt, onLine, banner, prefill, disa
   useEffect(() => {
     const term = termRef.current;
     if (term === null) return;
-    term.reset();
+    // Reset through the write stream, not term.reset(): xterm buffers writes, so output from the
+    // command that ended the last session would otherwise land after a synchronous reset.
+    term.write(`${ESC}c`);
     rowsRef.current = { cursor: 0, end: 0 };
     editorRef.current = setLine(emptyEditor(editorRef.current.history), prefill ?? '');
     if (banner) term.write(DIM + toCrlf(wrapWords(banner, term.cols)) + RESET + '\r\n');

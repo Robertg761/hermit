@@ -29,14 +29,20 @@ const withWrongOs = (d: Dialect): Dialect => ({
     if (egg !== undefined) return { ...egg, free: true };
     const raw = d.run(line, state);
     const r = raw.effects.some((e) => e.kind === 'easterEgg') || NOT_SIMULATED.test(raw.stderr) ? { ...raw, free: true } : raw;
-    if (r.exitCode === 0) return r;
-    const wrongOs = r.wrongOs ?? explainWrongOs(d.os, line);
-    if (wrongOs !== undefined) return { ...r, wrongOs };
     // A real command Hermit doesn't simulate is curiosity, not a typo: say what it does, for free.
     const missing = notFoundName(r.stderr);
     const real = missing === undefined ? undefined : realCommand(d.os, missing);
-    if (missing !== undefined && real !== undefined) {
-      return { ...r, stderr: `hermit: ${missing} is a real command, but Hermit doesn't simulate it yet.`, decoded: `On your computer, \`${missing}\` ${real}. No heart lost.`, free: true };
+    const unsimulated =
+      missing !== undefined && real !== undefined
+        ? { ...r, stderr: `hermit: ${missing} is a real command, but Hermit doesn't simulate it yet.`, decoded: `On your computer, \`${missing}\` ${real}. No heart lost.`, free: true }
+        : undefined;
+    // Inside a pipe the last stage can still succeed, so check before the early return.
+    if (r.exitCode === 0) return unsimulated ?? r;
+    const wrongOs = r.wrongOs ?? explainWrongOs(d.os, line);
+    if (wrongOs !== undefined) return { ...r, wrongOs };
+    if (unsimulated !== undefined) return unsimulated;
+    if (d.os !== 'windows' && /^\s*sudo\s+-[is]\s*$/.test(line)) {
+      return { ...r, stderr: `hermit: a whole admin shell isn't simulated.`, decoded: 'On your computer, that opens a whole shell as the administrator. Here, put `sudo` in front of one command at a time. No heart lost.', free: true };
     }
     if (/unrecognized option '--help'|unknown option -- -|invalid option -- '-'/.test(r.stderr) && /(^|\s)--help(\s|$)/.test(line)) {
       const name = line.trim().split(/\s+/)[0] ?? '';
