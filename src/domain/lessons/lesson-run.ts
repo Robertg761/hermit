@@ -72,6 +72,16 @@ export const refillAtCurrent = (run: LessonRun): LessonRun => ({
   attempt: startChallenge(run.attempt.challenge, run.os),
 });
 
+/**
+ * Put the challenge's files back as they started, for a learner who broke the sandbox.
+ * Only the machine resets: hearts, hints and the record of mistakes stay as they are.
+ */
+export const restartStep = (run: LessonRun): LessonRun => ({
+  ...run,
+  restarts: run.restarts + 1,
+  attempt: { ...run.attempt, machine: startChallenge(run.attempt.challenge, run.os).machine, solved: false },
+});
+
 const loseHeart = (run: LessonRun): LessonRun | null => {
   const hearts = run.hearts - 1;
   return hearts <= 0 ? null : { ...run, hearts };

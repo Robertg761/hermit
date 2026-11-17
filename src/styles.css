@@ -320,6 +320,37 @@ code {
   color: #cfcfd8;
 }
 
+.start-over {
+  margin-left: auto;
+  padding: 2px 8px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: #a9a9b8;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.start-over:hover:not(:disabled),
+.start-over:focus-visible {
+  color: #fff;
+  border-color: rgb(255 255 255 / 35%);
+}
+
+.start-over:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+@media (max-width: 760px) {
+  .start-over {
+    padding: 7px 10px;
+    margin-block: -5px;
+  }
+}
+
 .terminal-host {
   flex: 1;
   min-height: 0;

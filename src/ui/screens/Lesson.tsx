@@ -8,12 +8,13 @@ import {
   lessonProgress,
   markHintUsed,
   nextChallenge,
+  restartStep,
   startLesson,
   submitLine,
   type AnswerResult,
   type LessonRun,
 } from '../../domain/lessons/lesson-run';
-import { HEARTS_PER_LESSON, availableHints } from '../../domain/lessons/runner';
+import { HEARTS_PER_LESSON, availableHints, stuckLevel } from '../../domain/lessons/runner';
 import type { ChallengeType, Lesson as LessonData } from '../../domain/lessons/types';
 import type { OS } from '../../domain/types';
 import { EGG_LINES, pickLine, type HermeEvent } from '../mascot/lines';
@@ -173,6 +174,16 @@ export function Lesson({ lesson, os, dialect, onExit, onComplete, secrets = [], 
       // A real command Hermit doesn't simulate: curiosity, not a mistake.
       setSpeech({ mood: 'idle', text: explainer });
       return { stdout: r.stdout, stderr: r.stderr, clear, ...(note ? { note } : {}) };
+    } else if (stuckLevel(next.attempt) > stuckLevel(before.attempt)) {
+      // Valid commands that keep missing the goal: the learner is lost, not careless. Say so, for free.
+      const more = availableHints(next.attempt).length > hintsShown;
+      setSpeech({
+        mood: 'idle',
+        text:
+          stuckLevel(next.attempt) === 1
+            ? `That ran fine, but it isn't what this step asks for. Read the task once more${more ? ', or tap **Hint**' : ''}. No heart lost.`
+            : `Still not it, and that's okay. ${more ? 'Tap **Hint** and I will show you the way.' : 'Look at the hints under me.'}`,
+      });
     } else if (line.trim().length > 0) {
       setSpeech((s) => (s.mood === 'sad' ? { mood: 'idle', text: s.text } : s));
     }
@@ -253,6 +264,12 @@ export function Lesson({ lesson, os, dialect, onExit, onComplete, secrets = [], 
     setSpeech(say('hint', 'smug'));
   };
 
+  const startOver = (): void => {
+    update(restartStep(runRef.current));
+    setRanLines(null);
+    setSpeech({ mood: 'idle', text: 'Fresh files, same step. Your hearts are as they were.' });
+  };
+
   const retry = (): void => {
     setRestartNotice(false);
     setCombo(0);
@@ -292,6 +309,11 @@ export function Lesson({ lesson, os, dialect, onExit, onComplete, secrets = [], 
             <span className="dot" />
             <span className="dot" />
             <span className="terminal-title">{SHELL_LABEL[os]}</span>
+            {challenge.type !== 'typeAlong' && (
+              <button type="button" className="start-over" onClick={startOver} disabled={locked} title="Put the files back as they were when this step began">
+                ↺ Start over
+              </button>
+            )}
           </div>
           <Terminal
             os={os}

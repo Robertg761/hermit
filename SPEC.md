@@ -58,6 +58,8 @@ The core loop: pick your OS, open a lesson, type real commands into a fake termi
 - Easter eggs and features Hermit doesn't simulate never cost a heart, even when they print an error. (Approved Nov 17.)
 - Each unit banner offers "Know this already? Skip ahead", which opens that unit's first lesson without finishing earlier ones. (Approved Nov 17.)
 - After 2 failed attempts on a challenge, a Hint button pulses. After 3, the hint may reveal the answer.
+- A learner who is stuck without failing gets the same help. After 3 commands that run fine but miss the goal (beyond the steps the shortest solution needs), Herme says so and the Hint button appears, with no heart lost. After 6, the last hint unlocks.
+- A terminal step has a "Start over" control that puts its files back as they began. Hearts, hints and mistakes stay as they are.
 
 ### Progress
 

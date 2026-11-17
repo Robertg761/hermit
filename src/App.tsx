@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { units, upcomingUnits } from './content/units';
 import { dialects } from './domain/dialects/registry';
 import type { Lesson as LessonData } from './domain/lessons/types';
@@ -20,6 +20,7 @@ import type { OS } from './domain/types';
 import { createLocalStore } from './providers/storage';
 import { pickLine } from './ui/mascot/lines';
 import { SHELLS, type ShellKind, type HermeMood } from './ui/mascot/Herme';
+import { createBackGuard } from './ui/backGuard';
 import { detectOs } from './ui/os';
 import { Home } from './ui/screens/Home';
 import { Landing } from './ui/screens/Landing';
@@ -44,6 +45,7 @@ type Screen =
   | { readonly kind: 'streak'; readonly streak: number; readonly nextId: string | null };
 
 const store = createLocalStore();
+const backGuard = createBackGuard(window);
 const allLessons: readonly LessonData[] = units.flatMap((u) => u.lessons);
 const available = (Object.keys(dialects) as OS[]).filter((os) => dialects[os] !== undefined);
 
@@ -68,9 +70,15 @@ const nextLessonAfter = (p: Progress, os: OS, lessonId: string): string | null =
 
 export function App() {
   const [progress, setProgress] = useState<Progress>(() => store.load());
-  const [screen, setScreen] = useState<Screen>(() =>
+  const [screen, showScreen] = useState<Screen>(() =>
     progress.os !== null && available.includes(progress.os) ? { kind: 'home' } : { kind: 'landing' },
   );
+  /** Home, and the OS picker before an OS is chosen, are the bottom of the app. Everything else is one Back press above it. */
+  const setScreen = (next: Screen): void => {
+    if (next.kind === 'home' || (next.kind === 'landing' && progress.os === null)) backGuard.leave();
+    else backGuard.enter();
+    showScreen(next);
+  };
   const today = dayKey(new Date());
   const detected = detectOs(navigator.userAgent);
   const os = progress.os ?? detected;
@@ -92,6 +100,22 @@ export function App() {
     setGreeting(makeGreeting(p));
     setScreen({ kind: 'home' });
   };
+
+  // The browser's Back button returns home from a lesson instead of leaving the site.
+  const onBackRef = useRef<() => void>(() => undefined);
+  useEffect(() => {
+    onBackRef.current = () => {
+      if (progress.os === null) return showScreen({ kind: 'landing' });
+      setGreeting(makeGreeting(progress));
+      showScreen({ kind: 'home' });
+    };
+  });
+  useEffect(() => {
+    const stop = backGuard.listen(() => onBackRef.current());
+    // A reload starts at the bottom of the app, so drop an entry left over from before it.
+    backGuard.leave();
+    return stop;
+  }, []);
 
   if (screen.kind === 'lesson') {
     const lesson = allLessons.find((l) => l.id === screen.lessonId);
