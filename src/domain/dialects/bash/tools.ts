@@ -67,7 +67,7 @@ export const posixTools = (flavor: Flavor): Readonly<Record<string, CommandHandl
 
   // ---------- grep ----------
 
-  const grep = withFlags('grep', { short: 'rRinvclhHwF', long: { recursive: 'r', 'ignore-case': 'i', 'line-number': 'n', 'invert-match': 'v', count: 'c', 'files-with-matches': 'l' } }, ({ flags, operands }, state, input) => {
+  const grep = withFlags('grep', { short: 'rRinvclhHwFaIE', long: { recursive: 'r', 'ignore-case': 'i', 'line-number': 'n', 'invert-match': 'v', count: 'c', 'files-with-matches': 'l' } }, ({ flags, operands }, state, input) => {
     const [pattern, ...files] = operands;
     if (pattern === undefined) {
       return result(state, { stderr: gnu ? "Usage: grep [OPTION]... PATTERNS [FILE]...\nTry 'grep --help' for more information." : 'usage: grep [-rinvclhHw] [pattern] [file ...]', exitCode: 2 });
@@ -189,7 +189,9 @@ export const posixTools = (flavor: Flavor): Readonly<Record<string, CommandHandl
       const multi = sources.length + errs.length > 1;
       const parts = sources.map((s, i) => {
         const lines = linesOf(s.text);
-        const slice = cmd === 'head' ? lines.slice(0, count) : lines.slice(Math.max(0, lines.length - count));
+        // `tail -n +11` starts at line 11 instead of counting from the end.
+        const fromStart = cmd === 'tail' && nRaw.startsWith('+');
+        const slice = cmd === 'head' ? lines.slice(0, count) : fromStart ? lines.slice(Math.max(0, count - 1)) : lines.slice(Math.max(0, lines.length - count));
         const header = multi && s.name !== null ? `${i > 0 ? '\n' : ''}==> ${s.name} <==\n` : '';
         return header + joinLines(slice);
       });

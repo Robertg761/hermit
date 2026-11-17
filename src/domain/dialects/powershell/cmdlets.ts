@@ -115,7 +115,8 @@ const getChildItem: Cmdlet = {
     { ...P.filter, position: 1 },
     P.include,
     P.exclude,
-    { ...P.recurse, aliases: ['s'] },
+    // `-r` is everyday shorthand for -Recurse, not ambiguous with -ReadOnly.
+    { ...P.recurse, aliases: ['s', 'r'] },
     { name: 'Depth', kind: 'value', type: 'System.UInt32' },
     P.force,
     { name: 'Name', kind: 'switch' },
@@ -145,7 +146,17 @@ const getChildItem: Cmdlet = {
       if (exclude !== undefined && exclude.some((g) => globMatch(g, name, true))) return false;
       return true;
     };
-    for (const raw of raws) {
+    /** With -Name, each item's path relative to the folder listed (just the name without -Recurse). */
+    const rels: string[] = [];
+    const push = (item: PsObject, rel: string): void => {
+      out.push(item);
+      rels.push(rel);
+    };
+    for (const rawPath of raws) {
+      // `Get-ChildItem *.txt -Recurse`: a wildcard in the last part filters every folder below.
+      const split = has(b, 'Recurse') ? /^(.*?)([^\\/]*[*?[][^\\/]*)$/.exec(rawPath) : null;
+      const leafGlob = split !== null && !hasGlob(split[1] ?? '') ? (split[2] ?? undefined) : undefined;
+      const raw = leafGlob !== undefined ? (split?.[1] ?? '').replace(/[\\/]$/, '') || '.' : rawPath;
       const paths = expandPath(raw, state);
       if (paths.length === 0 && hasGlob(raw)) continue;
       for (const path of paths) {
@@ -155,27 +166,28 @@ const getChildItem: Cmdlet = {
           continue;
         }
         if (node.value.kind === 'file') {
-          out.push(fileObject(path, node.value));
+          push(fileObject(path, node.value), path[path.length - 1] ?? '');
           continue;
         }
+        const keepHere = (name: string, child: VNode): boolean => keep(name, child) && (leafGlob === undefined || globMatch(leafGlob, name, true));
         if (has(b, 'Recurse')) {
-          const visit = (dirPath: Path, dir: VNode): void => {
+          const visit = (dirPath: Path, dir: VNode, prefix: string): void => {
             if (dir.kind !== 'dir') return;
             const entries = sortEntries(Object.entries(dir.children));
-            for (const [name, child] of entries) if (keep(name, child)) out.push(fileObject([...dirPath, name], child));
+            for (const [name, child] of entries) if (keepHere(name, child)) push(fileObject([...dirPath, name], child), prefix + name);
             for (const [name, child] of entries) {
-              if (child.kind === 'dir' && (!child.hidden || force)) visit([...dirPath, name], child);
+              if (child.kind === 'dir' && (!child.hidden || force)) visit([...dirPath, name], child, `${prefix}${name}\\`);
             }
           };
-          visit(path, node.value);
+          visit(path, node.value, '');
         } else {
           for (const [name, child] of sortEntries(Object.entries(node.value.children))) {
-            if (keep(name, child)) out.push(fileObject([...path, name], child));
+            if (keepHere(name, child)) push(fileObject([...path, name], child), name);
           }
         }
       }
     }
-    const result = has(b, 'Name') ? out.map((o): PsObject => ({ type: 'string', value: o.type === 'file' ? o.name : '' })) : out;
+    const result = has(b, 'Name') ? rels.map((rel): PsObject => ({ type: 'string', value: rel })) : out;
     return { state, out: result, errors };
   },
 };

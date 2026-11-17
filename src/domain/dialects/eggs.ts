@@ -96,7 +96,8 @@ const EGGS: readonly Egg[] = [
   },
   {
     id: 'sl',
-    test: (line) => /^sl(\s|$)/.test(line.trim()),
+    // On Windows `sl` is a real alias for Set-Location, so the steam crab is posix-only.
+    test: (line, os) => os !== 'windows' && /^sl(\s|$)/.test(line.trim()),
     run: () => ({
       stdout: `You meant ls. Instead, a crab scuttles past:\n\n${CRAB.map((l) => `                    ${l}`).join('\n')}\n        ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~\n`,
       stderr: '',

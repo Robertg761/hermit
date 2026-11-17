@@ -233,8 +233,10 @@ const runStatements = (list: StatementList, state: MachineState, lastOk: boolean
   return { state: cur, out, errors, effects, ok };
 };
 
-export const runPowerShell = (line: string, state: MachineState): CommandResult => {
-  if (line.trim() === '') return result(state);
+export const runPowerShell = (rawLine: string, state: MachineState): CommandResult => {
+  if (rawLine.trim() === '') return result(state);
+  // PowerShell defines `cd..` and `cd\` as functions, a habit kept from Command Prompt.
+  const line = rawLine.replace(/^(\s*)cd(\.\.|\\)(?=\s*$)/i, (_m, sp: string, to: string) => `${sp}Set-Location ${to}`);
   const parsed = parsePowerShell(line);
   if (!parsed.ok) {
     const msg = parsed.error === 'SCRIPTBLOCK' ? NOT_SIMULATED : `ParserError: ${parsed.error}`;
