@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { bash } from '../dialects/bash';
 import { buildMachine } from '../machine';
 import { goalMet } from './goal';
-import { answerChoice, answerLine, completeCard, isLastChallenge, nextChallenge, startLesson, submitLine } from './lesson-run';
-import { availableHints, challengeXp, startChallenge, step } from './runner';
+import { answerChoice, answerLine, completeCard, isLastChallenge, nextChallenge, restartStep, startLesson, submitLine } from './lesson-run';
+import { availableHints, challengeXp, startChallenge, step, stuckLevel } from './runner';
+import { dialects } from '../dialects/registry';
 import { same, type Challenge, type Lesson } from './types';
 
 const challenge: Challenge = {
@@ -80,7 +81,52 @@ describe('challenge runner', () => {
   });
 });
 
+describe('a learner who is stuck without errors', () => {
+  const run = (lines: readonly string[], c: Challenge = challenge) => lines.reduce((a, line) => step(a, line, bash).attempt, startChallenge(c, 'linux'));
+  it('valid commands that miss the goal unlock the first hint after 3, and the answer after 6', () => {
+    expect(availableHints(run(['ls', 'pwd']))).toEqual([]);
+    const stuck = run(['ls', 'pwd', 'ls']);
+    expect(stuckLevel(stuck)).toBe(1);
+    expect(availableHints(stuck)).toEqual(['First hint.']);
+    expect(stuck.lostHeart).toBe(false);
+    expect(stuck.failures).toBe(0);
+    const veryStuck = run(['ls', 'pwd', 'ls', 'cat keep.txt', 'ls', 'pwd']);
+    expect(stuckLevel(veryStuck)).toBe(2);
+    expect(availableHints(veryStuck)).toHaveLength(2);
+  });
+  it('empty lines and free commands are not counted', () => {
+    const linux = dialects.linux;
+    if (linux === undefined) throw new Error('linux');
+    const a = ['', '   ', 'man ls', 'export A=1', 'ls'].reduce((at, line) => step(at, line, linux).attempt, startChallenge(challenge, 'linux'));
+    expect(a.strays).toBe(1);
+  });
+  it('steps a long solution needs are not held against the learner', () => {
+    const long: Challenge = { ...challenge, solutions: same([['ls', 'pwd', 'ls', 'rm junk.txt']]) };
+    expect(stuckLevel(run(['ls', 'pwd', 'ls', 'ls', 'ls'], long))).toBe(0);
+    expect(stuckLevel(run(['ls', 'pwd', 'ls', 'ls', 'ls', 'ls'], long))).toBe(1);
+  });
+  it('solving still earns the clean bonus when no hint was taken', () => {
+    const r = step(run(['ls', 'pwd', 'ls']), 'rm junk.txt', bash);
+    expect(r.outcome).toBe('solved');
+    expect(challengeXp(r.attempt)).toBe(15);
+  });
+});
+
 describe('lesson run', () => {
+  it('start over puts the files back and keeps hearts and mistakes', () => {
+    const free: Lesson = { id: 'f', title: 'Free', challenges: [{ ...challenge, protectedPaths: [], goal: same({ kind: 'fileContains', path: 'junk.txt', text: 'done' }) }] };
+    let run = startLesson(free, 'linux');
+    run = submitLine(run, 'rm nope.txt', bash).run;
+    run = submitLine(run, 'rm junk.txt', bash).run;
+    expect(goalMet({ kind: 'exists', path: 'junk.txt' }, 'linux', run.attempt.machine, null)).toBe(false);
+    const again = restartStep(run);
+    expect(goalMet({ kind: 'exists', path: 'junk.txt' }, 'linux', again.attempt.machine, null)).toBe(true);
+    expect(again.hearts).toBe(2);
+    expect(again.attempt.failures).toBe(1);
+    expect(again.attempt.lostHeart).toBe(true);
+    expect(again.restarts).toBe(run.restarts + 1);
+    expect(again.index).toBe(run.index);
+  });
   it('at 0 hearts, refills them and retries the same challenge', () => {
     const solved = submitLine(startLesson(lesson, 'linux'), 'rm junk.txt', bash).run;
     const second = nextChallenge(solved);

@@ -13,6 +13,8 @@ export type ChallengeAttempt = {
   readonly machine: MachineState;
   /** Failed commands on this challenge. Drives the hint button. */
   readonly failures: number;
+  /** Commands that ran without error but did not solve the step. Drives the nudge for a stuck learner. */
+  readonly strays: number;
   readonly lostHeart: boolean;
   readonly usedHint: boolean;
   readonly solved: boolean;
@@ -41,6 +43,7 @@ export const startChallenge = (challenge: Challenge, os: OS): ChallengeAttempt =
   os,
   machine: buildMachine(os, challenge.seed[os]),
   failures: 0,
+  strays: 0,
   lostHeart: false,
   usedHint: false,
   solved: false,
@@ -79,15 +82,36 @@ export const step = (attempt: ChallengeAttempt, line: string, dialect: Dialect):
   if (goalMet(challenge.goal[os], os, result.state, result)) {
     return { attempt: { ...next, solved: true }, result, outcome: 'solved' };
   }
-  return { attempt: next, result, outcome: failed ? 'error' : 'ok' };
+  // A real command that ran fine but missed the goal. Curiosity (eggs, unsimulated commands) doesn't count.
+  const stray = !failed && result.free !== true && line.trim() !== '';
+  return { attempt: stray ? { ...next, strays: next.strays + 1 } : next, result, outcome: failed ? 'error' : 'ok' };
+};
+
+/** Stray commands, beyond what the shortest solution needs, before Herme steps in. */
+export const STUCK_AFTER = 3;
+
+/**
+ * How lost a learner looks without having made an error: 0 fine, 1 stuck, 2 very stuck.
+ * Careful beginners type valid commands that miss the goal, and they need help as much as
+ * the ones who see red text.
+ */
+export const stuckLevel = (attempt: ChallengeAttempt): 0 | 1 | 2 => {
+  const lengths = attempt.challenge.solutions[attempt.os].map((seq) => seq.length);
+  const needed = Math.max(1, lengths.length > 0 ? Math.min(...lengths) : 1);
+  const extra = attempt.strays - (needed - 1);
+  return extra >= STUCK_AFTER * 2 ? 2 : extra >= STUCK_AFTER ? 1 : 0;
 };
 
 export const useHint = (attempt: ChallengeAttempt): ChallengeAttempt => ({ ...attempt, usedHint: true });
 
-/** Hints unlock after 2 failures; the last hint (which may give the answer) after 3. */
+/**
+ * Hints unlock after 2 failures; the last hint (which may give the answer) after 3.
+ * A learner who is stuck without failing gets the same two steps.
+ */
 export const availableHints = (attempt: ChallengeAttempt): readonly string[] => {
   const hints = attempt.challenge.hints[attempt.os];
-  const failures = attempt.failures + (attempt.challenge.openHint === true ? 2 : 0);
+  const stuck = stuckLevel(attempt);
+  const failures = Math.max(attempt.failures + (attempt.challenge.openHint === true ? 2 : 0), stuck === 0 ? 0 : stuck + 1);
   if (failures < 2) return [];
   if (failures < 3) return hints.slice(0, Math.max(1, hints.length - 1));
   return hints;

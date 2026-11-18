@@ -49,6 +49,21 @@ describe('error decoder', () => {
     expect(run('linux', 'ls --help').free).toBe(true);
     expect(run('linux', 'pdw').free).toBeUndefined();
   });
+  it('commands builders reach for are free too', () => {
+    for (const line of ['export A=1', 'env', 'printenv', 'id', 'locate notes.txt', 'doas ls', '. notes.txt', '!!', 'sudo !!', 'sudo -i', 'for i in 1 2; do echo $i; done']) {
+      expect(run('linux', line).free, line).toBe(true);
+      expect(run('mac', line).free, line).toBe(true);
+    }
+    for (const line of ['whoami', 'date', 'pushd ..', 'man ls', 'Get-ChildItem | Format-List', 'Get-ChildItem | ft', 'Get-Content notes.txt | Tee-Object out.txt', 'Unblock-File notes.txt', 'runas /user:Administrator pwsh']) {
+      expect(run('windows', line).free, line).toBe(true);
+    }
+  });
+  it('an unsimulated command inside a pipe is explained, not called a typo', () => {
+    const r = run('linux', "awk '/x/' notes.txt | wc -l");
+    expect(r.free).toBe(true);
+    expect(r.stderr).toContain('awk is a real command');
+    expect(r.decoded).toContain('picks out columns');
+  });
   it('common slips get a plain-English line', () => {
     expect(run('linux', 'LS').decoded).toContain('lower case: `ls`');
     expect(run('linux', 'cp notes.txt').decoded).toContain('needs two names');

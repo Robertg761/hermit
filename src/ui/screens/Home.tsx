@@ -166,35 +166,21 @@ export function Home({ os, units, upcoming, completed, playable, unlocked, shell
             </section>
           );
         })}
-        {upcoming.map((u, i) => {
-          const colour = UNIT_COLOURS[(units.length + i) % UNIT_COLOURS.length] ?? 'coral';
-          return (
-            <section key={u.id} className={`unit unit-${colour} unit-locked`}>
-              <div className="unit-banner">
-                <div>
-                  <p className="unit-kicker">Unit {units.length + i + 1}</p>
-                  <h2 className="unit-title">{u.title}</h2>
-                  <p className="unit-blurb">{u.blurb}</p>
-                </div>
-                <span className="unit-count">🔒</span>
+        {upcoming.length > 0 && (
+          <section className="unit unit-locked">
+            <div className="unit-banner">
+              <div>
+                <p className="unit-kicker">Coming next</p>
+                <h2 className="unit-title">More burrows</h2>
+                <p className="unit-blurb">{upcoming.map((u) => u.title).join(' · ')}</p>
               </div>
-              <ol className="path">
-                {[0, 1].map((k) => {
-                  const offset = WIGGLE[globalIndex % WIGGLE.length] ?? 0;
-                  globalIndex++;
-                  return (
-                    <li key={k} className="path-step" style={{ transform: `translateX(${offset}px)` }}>
-                      <button type="button" className="node node-locked" disabled aria-label="Coming soon">
-                        <NodeIcon state="locked" index={k} />
-                      </button>
-                    </li>
-                  );
-                })}
-              </ol>
-            </section>
-          );
-        })}
-        <p className="path-end">More units are crawling in. Herme is writing them by claw.</p>
+              <span className="unit-count" aria-hidden="true">
+                🔒
+              </span>
+            </div>
+          </section>
+        )}
+        <p className="path-end">Herme is writing them by claw.</p>
       </main>
     </div>
   );

@@ -23,6 +23,8 @@ It's the entry for Hackyard Yard #7, theme "Remix": take something that exists a
 - XP, streak and completed lessons survive a page reload.
 - Stretch: Rosetta mode ("I know Linux, teach me PowerShell"), AI explanations of mistakes, units 6 to 8.
 
+> **Cut on Nov 18.** Rosetta mode and AI hints, the first two items on the cut list, are not in the submitted build, and units 6 to 8 are shown on the path as "Coming next". Hints are the written ones in each challenge, plus Herme's wrong-OS explanations and plain-English error readings, so the app has no server code and needs no API key. The sections below that describe the cut features are kept as the original plan.
+
 ### Non-goals
 
 - No real shell. User input is never executed on any machine; everything runs against a simulated filesystem.
@@ -58,6 +60,8 @@ The core loop: pick your OS, open a lesson, type real commands into a fake termi
 - Easter eggs and features Hermit doesn't simulate never cost a heart, even when they print an error. (Approved Nov 17.)
 - Each unit banner offers "Know this already? Skip ahead", which opens that unit's first lesson without finishing earlier ones. (Approved Nov 17.)
 - After 2 failed attempts on a challenge, a Hint button pulses. After 3, the hint may reveal the answer.
+- A learner who is stuck without failing gets the same help. After 3 commands that run fine but miss the goal (beyond the steps the shortest solution needs), Herme says so and the Hint button appears, with no heart lost. After 6, the last hint unlocks.
+- A terminal step has a "Start over" control that puts its files back as they began. Hearts, hints and mistakes stay as they are.
 
 ### Progress
 
@@ -436,7 +440,7 @@ Acceptance:
 Feature freeze at 10 am NST. Submit by noon to leave a buffer.
 
 - [ ] README: one-line pitch, GIF, live link, how to run locally, stack, what is simulated and what isn't
-- [ ] A 60-second demo video: pick Windows, fail with `rm -rf`, Herme roasts you, fix it, finish a lesson, flip to Rosetta mode
+- [x] A 60-second demo video: pick Windows, fail with `rm -rf`, Herme roasts you, fix it, finish a lesson, show the path ([`docs/demo.mp4`](docs/demo.mp4))
 - [ ] Final deploy, then a cold playthrough in a private window on each browser
 - [ ] Submit the repo and demo on Hackyard
 
