@@ -440,7 +440,7 @@ Acceptance:
 Feature freeze at 10 am NST. Submit by noon to leave a buffer.
 
 - [ ] README: one-line pitch, GIF, live link, how to run locally, stack, what is simulated and what isn't
-- [x] A 60-second demo video: pick Windows, fail with `rm -rf`, Herme roasts you, fix it, finish a lesson, show the path ([`docs/demo.mp4`](docs/demo.mp4))
+- [x] A demo video, cut as a 41-second narrated ad: the scary-terminal hook, pick your OS, type a real command, break things safely, fail with `rm -rf` on Windows and get Herme's explanation, then the call to action ([`docs/demo.mp4`](docs/demo.mp4))
 - [ ] Final deploy, then a cold playthrough in a private window on each browser
 - [ ] Submit the repo and demo on Hackyard
 
