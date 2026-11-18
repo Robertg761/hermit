@@ -1363,10 +1363,14 @@ code {
   animation: fall linear forwards;
 }
 
+/* Fade out at the end: on a page taller than the screen the pieces would otherwise settle in a line across the text. */
 @keyframes fall {
+  75% {
+    opacity: 0.9;
+  }
   to {
     transform: translate(var(--drift), 105vh) rotate(var(--rot));
-    opacity: 0.9;
+    opacity: 0;
   }
 }
 

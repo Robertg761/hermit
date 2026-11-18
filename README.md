@@ -8,12 +8,18 @@ Entry for [Hackyard](https://hackyard.tech) Yard #7, theme "Remix". See [`SPEC.m
 
 **Play it:** https://hermit-shell.vercel.app
 
+![Herme explains why rm -rf fails in PowerShell](docs/demo.gif)
+
+A 61-second tour: [`docs/demo.mp4`](docs/demo.mp4). The contest write-up is in [`SUBMISSION.md`](SUBMISSION.md).
+
 ## What's in it
 
 - **Three real shells.** Bash on Linux, zsh on macOS and PowerShell 7 on Windows, with each one's real output, error wording and exit codes.
-- **Five units, 17 lessons:** getting around, files and folders, finding things, pipes and redirects, processes and permissions.
+- **Five units, 18 lessons, 184 steps:** getting around, files and folders, finding things, pipes and redirects, processes and permissions.
 - **Taught like a language app.** Every command gets a short card, then you type along, pick, match, build it from tiles, and finally do it yourself. Nothing is tested before it is taught.
 - **Herme catches wrong-OS habits.** Type `ls -la` in PowerShell or `Remove-Item` in Bash and he explains the difference.
+- **Help when you are stuck.** A folder map, plain-English readings of errors, Tab completion, a hint after a few commands that miss the goal, and a "Start over" button that puts the files back.
+- **It carries over.** Every lesson ends with how to open a real terminal on your system and what to try there, and every unit has a cheat sheet.
 - **Hearts, XP, streaks, and a shell for every unit you finish.**
 - **Secrets.** There are 8 easter eggs. They never cost a heart.
 
@@ -29,7 +35,7 @@ npm run build
 
 ## How it works
 
-Nothing you type is executed. Each OS is a *dialect* (a parser plus command handlers) running against an immutable, in-memory filesystem. Lesson goals are declarative checks on the resulting state, so any valid command that reaches the goal passes, not just the one in the answer key.
+Nothing you type is executed, and the whole app runs in the browser with no server and no account. Each OS is a *dialect* (a parser plus command handlers) running against an immutable, in-memory filesystem. Lesson goals are declarative checks on the resulting state, so any valid command that reaches the goal passes, not just the one in the answer key.
 
 ```
 src/domain/     pure TypeScript: filesystem, shell parser, dialects, lesson engine
