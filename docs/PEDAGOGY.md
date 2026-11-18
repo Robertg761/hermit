@@ -89,7 +89,7 @@ Use this shape for every lesson. It is the ladder from technique 3, with review 
 
 Then any re-queued mistakes. Lessons can drop a step when a skill is trivial (`cd ~` doesn't need a Build), but the order Learn → recognise → produce never changes.
 
-Units 2 to 5 keep the spec's 2 lessons per unit, at 10 to 12 challenges each (with Learn and Type along being quick). Unit 1 gets 4 shorter lessons, because the learner is also meeting the terminal itself.
+Units 2 to 5 keep the spec's 2 lessons per unit, at 10 to 12 challenges each (with Learn and Type along being quick). Unit 1 gets 5 shorter lessons, because the learner is also meeting the terminal itself. The fifth, "Terminal superpowers", teaches Tab completion and the up arrow (added Nov 17).
 
 ## Unit 1, rewritten for absolute beginners
 

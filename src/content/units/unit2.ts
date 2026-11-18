@@ -36,18 +36,23 @@ export const unit2Lesson1: Lesson = {
       id: 'u2-l1-c1',
       teaches: ['mkdir'],
       seed: seed(),
-      card: px(
-        {
+      card: {
+        linux: {
           title: 'mkdir: make a folder',
-          body: '`mkdir` (**m**a**k**e **dir**ectory) makes a new folder, like New Folder in your file manager. When it works it prints nothing: no news is good news.',
+          body: '`mkdir` (**m**a**k**e **dir**ectory) makes a new folder, like New Folder in your file manager. Directory is another word for folder. When it works it prints nothing: no news is good news.',
           example: 'mkdir notes',
         },
-        {
+        mac: {
           title: 'mkdir: make a folder',
-          body: '`mkdir` makes a new folder, like New Folder in File Explorer. In PowerShell it is a shortcut for `New-Item -ItemType Directory`, and it shows you the folder it made.',
+          body: '`mkdir` (**m**a**k**e **dir**ectory) makes a new folder, like New Folder in Finder. Directory is another word for folder. When it works it prints nothing: no news is good news.',
           example: 'mkdir notes',
         },
-      ),
+        windows: {
+          title: 'mkdir: make a folder',
+          body: '`mkdir` (**m**a**k**e **dir**ectory) makes a new folder, like New Folder in File Explorer. Directory is another word for folder. In PowerShell `mkdir` is a shortcut for `New-Item -ItemType Directory`, and it shows you the folder it made.',
+          example: 'mkdir notes',
+        },
+      },
     }),
     typeAlong({
       id: 'u2-l1-c2',
@@ -66,7 +71,7 @@ export const unit2Lesson1: Lesson = {
       answer: px(1, 2),
       reasons: px(
         ['That goes *into* a folder. It has to exist first.', 'Right: make directory.', 'Close, but the real name is shorter: `mkdir`.'],
-        ['Sounds right, but no such cmdlet exists.', 'That goes *into* a folder. It has to exist first.', 'Right.'],
+        ['Sounds right, but there is no such command.', 'That goes *into* a folder. It has to exist first.', 'Right: make directory.'],
       ),
       explain: same('`mkdir ideas` makes it; `cd ideas` would then take you inside.'),
     }),
@@ -88,7 +93,7 @@ export const unit2Lesson1: Lesson = {
       card: px(
         {
           title: 'touch: make an empty file',
-          body: '`touch` makes a new, empty file. (If the file already exists, it just updates its date: it *touches* it.)',
+          body: '`touch` makes a new, empty file. (If the file already exists, `touch` only updates its date: it *touches* it.)',
           example: 'touch todo.txt',
         },
         {
@@ -106,7 +111,10 @@ export const unit2Lesson1: Lesson = {
       goal: fileExists('todo.txt'),
       tokens: px(['mkdir', 'todo.txt', 'new', 'touch', 'file'], ['-File', 'todo.txt', 'mkdir', 'New-Item', 'touch']),
       solutions: px([['touch todo.txt']], [['New-Item todo.txt']]),
-      hints: px(['`mkdir` would make a *folder* called todo.txt.'], ['`mkdir` would make a *folder* called todo.txt, and PowerShell has no `touch`.']),
+      hints: px(
+        ['`mkdir` would make a *folder* called todo.txt.', 'Tap `touch`, then `todo.txt`.'],
+        ['`mkdir` would make a *folder* called todo.txt, and PowerShell has no `touch`.', 'Tap `New-Item`, then `todo.txt`.'],
+      ),
       explain: same('An empty file, ready for Herme\'s to-do list.'),
     }),
     match({
@@ -131,6 +139,7 @@ export const unit2Lesson1: Lesson = {
     task({
       id: 'u2-l1-c8',
       uses: ['mkdir', 'cd'],
+      openHint: true,
       prompt: same('Make a folder called ideas, then step inside it.'),
       seed: seed(),
       goal: same({ kind: 'cwdIs', path: 'ideas' }),
@@ -181,12 +190,17 @@ export const unit2Lesson2: Lesson = {
       id: 'u2-l2-c3',
       uses: ['cat', 'ls'],
       prompt: same('Which command shows what is written *inside* draft.txt?'),
-      options: px(['ls draft.txt', 'cat draft.txt', 'open draft.txt'], ['Get-Content draft.txt', 'Get-ChildItem draft.txt', 'Get-File draft.txt']),
+      options: {
+        linux: ['ls draft.txt', 'cat draft.txt', 'show draft.txt'],
+        mac: ['ls draft.txt', 'cat draft.txt', 'open draft.txt'],
+        windows: ['Get-Content draft.txt', 'Get-ChildItem draft.txt', 'Get-File draft.txt'],
+      },
       answer: px(1, 0),
-      reasons: px(
-        ['That only shows the file name, not what is inside.', 'Right.', 'That opens it in another app, not in the terminal.'],
-        ['Right.', 'That shows the file and its details, not what is inside.', 'Not a real cmdlet.'],
-      ),
+      reasons: {
+        linux: ['That only shows the file name, not what is inside.', 'Right.', 'There is no `show` command.'],
+        mac: ['That only shows the file name, not what is inside.', 'Right.', 'That opens it in another app, not in the terminal.'],
+        windows: ['Right.', 'That shows the file and its details, not what is inside.', 'Sounds right, but there is no such command.'],
+      },
       explain: px('`ls` shows names; `cat` shows contents.', '`Get-ChildItem` shows names; `Get-Content` shows contents.'),
     }),
     task({
@@ -323,7 +337,7 @@ export const unit2Lesson3: Lesson = {
       id: 'u2-l3-c4',
       uses: ['cat'],
       review: true,
-      prompt: same('Before touching anything, read important.txt.'),
+      prompt: same('Before changing anything, read important.txt.'),
       seed: seed(),
       goal: same({ kind: 'stdoutIncludes', text: 'shell insurance' }),
       solutions: px([['cat important.txt']], [['Get-Content important.txt'], ['cat important.txt']]),
@@ -362,13 +376,16 @@ export const unit2Lesson3: Lesson = {
     predict({
       id: 'u2-l3-c7',
       uses: ['mv', 'ls'],
-      prompt: same('After these lines, what does the last one print?'),
+      prompt: px(
+        'After these lines, what does the last one print?',
+        'After these lines, what does the last one print? (`-Name` lists only the names, without the details.)',
+      ),
       seed: seed(),
-      command: px(['mv draft.txt archive', 'ls archive'], ['Move-Item draft.txt archive', '(Get-ChildItem archive).Name']),
-      options: same(['archive', 'draft.txt', 'archive/draft.txt']),
+      command: px(['mv draft.txt archive', 'ls archive'], ['Move-Item draft.txt archive', 'Get-ChildItem archive -Name']),
+      options: px(['archive', 'draft.txt', 'archive/draft.txt'], ['archive', 'draft.txt', 'archive\\draft.txt']),
       answer: same(1),
       hints: same(['Moving a file *into* an existing folder keeps its name.']),
-      explain: same('When the destination is an existing folder, the file moves inside it with the same name.'),
+      explain: same('When the second name is a folder that already exists, the file moves inside it and keeps its name.'),
     }),
     match({
       id: 'u2-l3-c8',
@@ -392,6 +409,7 @@ export const unit2Lesson3: Lesson = {
     task({
       id: 'u2-l3-c9',
       uses: ['cp'],
+      openHint: true,
       prompt: same('Put a copy of recipe.txt inside the archive folder. Keep the original where it is.'),
       seed: seed(),
       goal: same({ kind: 'all', goals: [{ kind: 'exists', path: 'archive/recipe.txt', type: 'file' }, { kind: 'exists', path: 'recipe.txt' }] }),
@@ -401,14 +419,21 @@ export const unit2Lesson3: Lesson = {
     }),
     task({
       id: 'u2-l3-c10',
-      uses: ['mkdir'],
+      uses: ['mkdir', 'mv'],
       review: true,
-      prompt: same('Make a folder called drafts.'),
+      openHint: true,
+      prompt: same('Make a folder called drafts, then move draft.txt into it.'),
       seed: seed(),
-      goal: dirExists('drafts'),
-      solutions: px([['mkdir drafts']], [['mkdir drafts'], ['New-Item -ItemType Directory drafts']]),
-      hints: same(['Make a directory.', 'Type `mkdir drafts`.']),
-      explain: same('Empty for now. Herme has plans.'),
+      goal: same({ kind: 'all', goals: [{ kind: 'exists', path: 'drafts/draft.txt', type: 'file' }, { kind: 'notExists', path: 'draft.txt' }] }),
+      solutions: px(
+        [['mkdir drafts', 'mv draft.txt drafts']],
+        [['mkdir drafts', 'Move-Item draft.txt drafts'], ['New-Item -ItemType Directory drafts', 'mv draft.txt drafts']],
+      ),
+      hints: px(
+        ['Two steps: make the folder first, then move the file into it.', 'Type `mkdir drafts`, then `mv draft.txt drafts`.'],
+        ['Two steps: make the folder first, then move the file into it.', 'Type `mkdir drafts`, then `Move-Item draft.txt drafts`.'],
+      ),
+      explain: same('The draft has a folder of its own now. Herme has plans.'),
     }),
   ],
 };
@@ -438,7 +463,7 @@ export const unit2Lesson4: Lesson = {
       protectedPaths: ['important.txt'],
       goal: same({ kind: 'notExists', path: 'junk.txt' }),
       line: px('rm junk.txt', 'Remove-Item junk.txt'),
-      explain: same('Gone. No undo, no Trash.'),
+      explain: px('Gone. No undo, no Trash.', 'Gone. No undo, no Recycle Bin.'),
     }),
     pick({
       id: 'u2-l4-c3',
@@ -446,7 +471,11 @@ export const unit2Lesson4: Lesson = {
       prompt: same('You deleted a file with the terminal. Where is it now?'),
       options: px(['In the Trash', 'Gone for good', 'Hidden with a dot'], ['In the Recycle Bin', 'Gone for good', 'Hidden']),
       answer: same(1),
-      reasons: same(['Only your file manager uses the Trash. The terminal does not.', 'Right. That is why careful people read twice.', 'Hiding is different. Deleting removes it.']),
+      reasons: {
+        linux: ['Only your file manager uses the Trash. The terminal does not.', 'Right. That is why careful people read twice.', 'Hiding is different. Deleting removes it.'],
+        mac: ['Only Finder uses the Trash. The terminal does not.', 'Right. That is why careful people read twice.', 'Hiding is different. Deleting removes it.'],
+        windows: ['Only File Explorer uses the Recycle Bin. The terminal does not.', 'Right. That is why careful people read twice.', 'Hiding is different. Deleting removes it.'],
+      },
       explain: same('Terminal deletes are permanent. Hermit is a safe place to practise that.'),
     }),
     task({
@@ -455,6 +484,7 @@ export const unit2Lesson4: Lesson = {
       review: true,
       prompt: same('Before deleting anything else, back up important.txt as important-backup.txt.'),
       seed: seed(),
+      protectedPaths: ['important.txt'],
       goal: same({ kind: 'fileContains', path: 'important-backup.txt', text: 'shell insurance' }),
       solutions: px([['cp important.txt important-backup.txt']], [['Copy-Item important.txt important-backup.txt'], ['cp important.txt important-backup.txt']]),
       hints: px(['Copy: from, then to.', 'Type `cp important.txt important-backup.txt`.'], ['Copy: from, then to.', 'Type `Copy-Item important.txt important-backup.txt`.']),
@@ -468,12 +498,12 @@ export const unit2Lesson4: Lesson = {
       card: px(
         {
           title: '-r: the whole folder',
-          body: '`cp` and `rm` work on files. To copy or delete a **folder and everything inside it**, add `-r` (**r**ecursive).',
+          body: 'On their own, `cp` and `rm` only handle files. Add `-r` (**r**ecursive) to copy or delete a **folder and everything inside it**. `rm -r` can wipe out a lot at once, so read the name twice.',
           example: 'cp -r src backup',
         },
         {
           title: '-Recurse: the whole folder',
-          body: 'To copy or delete a **folder and everything inside it**, add `-Recurse`. Without it, `Copy-Item` copies only the empty folder.',
+          body: 'Add `-Recurse` to copy or delete a **folder and everything inside it**. Without it, `Copy-Item` copies only the empty folder. `Remove-Item -Recurse` can wipe out a lot at once, so read the name twice.',
           example: 'Copy-Item src backup -Recurse',
         },
       ),
@@ -483,10 +513,14 @@ export const unit2Lesson4: Lesson = {
       uses: ['cp', 'recursive'],
       prompt: same('Copy the whole src folder, with everything in it, to a new folder called backup.'),
       seed: seed(),
+      protectedPaths: ['src'],
       goal: same({ kind: 'all', goals: [{ kind: 'exists', path: 'backup/app.js', type: 'file' }, { kind: 'exists', path: 'backup/util.js', type: 'file' }, { kind: 'exists', path: 'src/app.js' }] }),
-      tokens: px(['backup', '-a', 'cp', 'src', 'rm', '-r'], ['backup', '-Force', 'Copy-Item', 'src', 'Remove-Item', '-Recurse']),
+      tokens: px(['backup', 'mv', 'cp', 'src', 'rm', '-r'], ['backup', '-Force', 'Copy-Item', 'src', 'Remove-Item', '-Recurse']),
       solutions: px([['cp -r src backup']], [['Copy-Item src backup -Recurse']]),
-      hints: px(['Command, flag, from, to.'], ['Command, from, to, then the parameter.']),
+      hints: px(
+        ['Command, flag, from, to.', 'Tap `cp`, `-r`, `src`, `backup`.'],
+        ['Command, from, to, then the parameter.', 'Tap `Copy-Item`, `src`, `backup`, `-Recurse`.'],
+      ),
       explain: same('The folder and both files inside it were copied.'),
     }),
     task({
@@ -500,11 +534,11 @@ export const unit2Lesson4: Lesson = {
       solutions: px([['rm -r junk'], ['rm -rf junk']], [['Remove-Item junk -Recurse -Force'], ['Remove-Item junk -Recurse'], ['rm junk -Recurse']]),
       hints: px(
         ['`rm` refuses to delete folders unless you add the recursive flag.', 'Type `rm -r junk`.'],
-        ['`-rf` is Linux talk. PowerShell spells it out.', 'Type `Remove-Item junk -Recurse`.'],
+        ['`-rf` is how Linux and Mac say it. PowerShell spells it out.', 'Type `Remove-Item junk -Recurse`.'],
       ),
       explain: px(
-        '`rm -r` deletes a folder and its contents. You will often see `rm -rf`: the `f` (force) skips questions. Use it carefully.',
-        'PowerShell uses `-Recurse` (and `-Force` to skip questions) instead of `-rf`. The `rm` shortcut works, but it still wants PowerShell parameters.',
+        '`rm -r` deletes a folder and its contents. You will often see `rm -rf` online: the `f` (force) means it never asks first. Read the name twice before you use it.',
+        'You will often see `rm -rf` online, but that is Linux and Mac talk. PowerShell wants `-Recurse`. The `rm` shortcut works here, but it still wants PowerShell parameters.',
       ),
     }),
     match({
@@ -524,11 +558,12 @@ export const unit2Lesson4: Lesson = {
           ['Move-Item', 'Move or rename'],
         ],
       ),
-      explain: same('Folders need the recursive switch; files do not.'),
+      explain: px('Folders need `-r`. Files do not.', 'Folders need `-Recurse`. Files do not.'),
     }),
     task({
       id: 'u2-l4-c9',
       uses: ['rm', 'recursive'],
+      openHint: true,
       prompt: same('Clean-up time: delete junk.txt and the junk folder. Keep important.txt!'),
       seed: seed(),
       protectedPaths: ['important.txt'],
@@ -541,9 +576,12 @@ export const unit2Lesson4: Lesson = {
       id: 'u2-l4-c10',
       uses: ['mkdir', 'ls'],
       review: true,
-      prompt: same('Herme runs these two lines. What does the second one print?'),
+      prompt: px(
+        'Herme runs these two lines. What does the second one print?',
+        'Herme runs these two lines. What does the second one print? (`-Name` lists only the names.)',
+      ),
       seed: seed(),
-      command: px(['mkdir archive/2026', 'ls archive'], ['mkdir archive\\2026', '(Get-ChildItem archive).Name']),
+      command: px(['mkdir archive/2026', 'ls archive'], ['mkdir archive\\2026', 'Get-ChildItem archive -Name']),
       options: px(['archive', '2026', 'archive/2026'], ['archive', '2026', 'archive\\2026']),
       answer: same(1),
       hints: same(['Listing a folder shows what is *inside* it.']),

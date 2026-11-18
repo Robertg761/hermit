@@ -25,6 +25,7 @@ import { Home } from './ui/screens/Home';
 import { Landing } from './ui/screens/Landing';
 import { Lesson, type LessonResult } from './ui/screens/Lesson';
 import { LessonComplete } from './ui/screens/LessonComplete';
+import { LessonRecap } from './ui/components/LessonRecap';
 import { StreakScreen } from './ui/screens/StreakScreen';
 
 type Screen =
@@ -137,6 +138,10 @@ export function App() {
         shell={wornShell(progress, os)}
         newShell={screen.newShell}
         nextTitle={allLessons.find((l) => l.id === screen.nextId)?.title ?? null}
+        recap={(() => {
+          const done = allLessons.find((l) => l.id === screen.result.lessonId);
+          return done === undefined ? undefined : <LessonRecap lesson={done} os={os} />;
+        })()}
         onNext={() => {
           const nextId = screen.nextId;
           if (nextId === null) return goHome();

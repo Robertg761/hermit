@@ -313,13 +313,14 @@ const rmdirCmd: CommandHandler = (args, _input, state) => {
   return result(s, { stderr: errs.join('\n') });
 };
 
-const cp = withFlags('cp', { short: 'rRvfi', long: { recursive: 'r', verbose: 'v', force: 'f' } }, ({ flags, operands }, state) => {
+const cp = withFlags('cp', { short: 'rRvfiap', long: { recursive: 'r', verbose: 'v', force: 'f', archive: 'a' } }, ({ flags, operands }, state) => {
   if (operands.length < 2) {
     return result(state, {
       stderr: operands.length === 0 ? "cp: missing file operand\nTry 'cp --help' for more information." : `cp: missing destination file operand after '${operands[0] ?? ''}'\nTry 'cp --help' for more information.`,
     });
   }
-  const recursive = flags.has('r') || flags.has('R');
+  // -a (archive) copies folders too, like -r, and keeps dates and permissions.
+  const recursive = flags.has('r') || flags.has('R') || flags.has('a');
   const dest = operands[operands.length - 1] ?? '';
   const sources = operands.slice(0, -1);
   const destPath = resolve(dest, state);

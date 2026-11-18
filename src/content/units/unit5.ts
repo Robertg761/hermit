@@ -53,18 +53,23 @@ export const unit5Lesson1: Lesson = {
       id: 'u5-l1-c1',
       teaches: ['ps'],
       seed: same(busy),
-      card: px(
-        {
+      card: {
+        linux: {
           title: 'ps aux: see what is running',
-          body: 'Every running program is a **process**. `ps aux` lists them all. **PID** is each one\'s ID number, and **%CPU** is how hard it is working.',
+          body: 'Every running program is a **process**. `ps aux` lists them all, like the System Monitor app. **PID** is each one\'s ID number. **%CPU** is how much of the processor (the computer\'s brain) it is using.',
           example: 'ps aux',
         },
-        {
+        mac: {
+          title: 'ps aux: see what is running',
+          body: 'Every running program is a **process**. `ps aux` lists them all, like the Activity Monitor app. **PID** is each one\'s ID number. **%CPU** is how much of the processor (the computer\'s brain) it is using.',
+          example: 'ps aux',
+        },
+        windows: {
           title: 'Get-Process: see what is running',
-          body: 'Every running program is a **process**. `Get-Process` lists them all. **Id** is each one\'s ID number, and **CPU(s)** is how much work it has done.',
+          body: 'Every running program is a **process**. `Get-Process` lists them all, like Task Manager. **Id** is each one\'s ID number. **CPU(s)** is how many seconds of work the processor (the computer\'s brain) has done for it.',
           example: 'Get-Process',
         },
-      ),
+      },
     }),
     typeAlong({
       id: 'u5-l1-c2',
@@ -73,7 +78,7 @@ export const unit5Lesson1: Lesson = {
       seed: same(busy),
       goal: same({ kind: 'stdoutIncludes', text: 'runaway' }),
       line: px('ps aux', 'Get-Process'),
-      explain: same('Look at runaway: 99% of the processor, all by itself.'),
+      explain: px('Look at runaway: 99% of the processor, all by itself.', 'Look at runaway: 99 seconds of processor time. The others have used 2 or less.'),
     }),
     pick({
       id: 'u5-l1-c3',
@@ -91,7 +96,7 @@ export const unit5Lesson1: Lesson = {
       id: 'u5-l1-c4',
       uses: ['ps'],
       openHint: true,
-      prompt: same('Which process is using the most CPU? List the processes and look.'),
+      prompt: same('Which process is hogging the processor? List the processes and look.'),
       seed: same(busy),
       goal: same({ kind: 'stdoutIncludes', text: 'runaway' }),
       solutions: px([['ps aux']], [['Get-Process']]),
@@ -117,12 +122,12 @@ export const unit5Lesson1: Lesson = {
       card: px(
         {
           title: 'kill: stop a process',
-          body: '`kill` and a PID asks that process to stop. Nothing prints when it works. Here, 1201 is the music player.',
+          body: '`kill` and a PID asks that process to stop. (Despite the name, it asks politely.) Nothing prints when it works. Here, 1201 is the music player.',
           example: 'kill 1201',
         },
         {
           title: 'Stop-Process: stop a process',
-          body: '`Stop-Process -Id` and an Id stops that process. Nothing prints when it works. Here, 1201 is the music player.',
+          body: '`Stop-Process -Id` and an Id stops that process. Nothing prints when it works. Here, 1201 is the music player. (The short name `kill` works too.)',
           example: 'Stop-Process -Id 1201',
         },
       ),
@@ -143,13 +148,13 @@ export const unit5Lesson1: Lesson = {
       id: 'u5-l1-c8',
       uses: ['kill', 'ps'],
       prompt: px(
-        'ps aux shows: PID 4242 runaway, PID 1201 music, PID 1302 editor. You run kill 1302. What stops?',
-        'Get-Process shows: Id 4242 runaway, Id 1201 music, Id 1302 editor. You run Stop-Process -Id 1302. What stops?',
+        '`ps aux` shows: PID 4242 runaway, PID 1201 music, PID 1302 editor. You run `kill 1302`. What stops?',
+        '`Get-Process` shows: Id 4242 runaway, Id 1201 music, Id 1302 editor. You run `Stop-Process -Id 1302`. What stops?',
       ),
-      options: same(['The editor', 'The runaway', 'Everything']),
+      options: same(['The editor', 'The runaway', 'All three']),
       answer: same(0),
       reasons: same(['Right: 1302 is the editor\'s ID.', 'That would be 4242.', 'Only the process with that ID stops.']),
-      explain: same('Check the ID twice. Stopping the editor loses unsaved work.'),
+      explain: same('Check the ID twice. Stopping the editor could lose unsaved work.'),
     }),
     match({
       id: 'u5-l1-c9',
@@ -159,13 +164,13 @@ export const unit5Lesson1: Lesson = {
           ['ps aux', 'List running processes'],
           ['kill', 'Stop a process by its ID'],
           ['PID', 'A process\'s ID number'],
-          ['%CPU', 'How hard it is working'],
+          ['%CPU', 'How much of the processor it uses'],
         ],
         [
           ['Get-Process', 'List running processes'],
           ['Stop-Process -Id', 'Stop a process by its ID'],
           ['Id', 'A process\'s ID number'],
-          ['CPU(s)', 'How much work it has done'],
+          ['CPU(s)', 'Seconds of processor work so far'],
         ],
       ),
       explain: same('Look, then stop. Always in that order.'),
@@ -173,7 +178,8 @@ export const unit5Lesson1: Lesson = {
     task({
       id: 'u5-l1-c10',
       uses: ['ps', 'kill'],
-      prompt: same('The computer is slow again. Find the process hogging the CPU and stop it.'),
+      openHint: true,
+      prompt: same('The computer is slow again. Find the process hogging the processor and stop it.'),
       seed: same(busy),
       goal: same(gone('runaway')),
       solutions: px([['ps aux', 'kill 4242'], ['kill 4242']], [['Get-Process', 'Stop-Process -Id 4242'], ['Stop-Process -Id 4242']]),
@@ -231,17 +237,21 @@ export const unit5Lesson2: Lesson = {
     pick({
       id: 'u5-l2-c3',
       uses: ['script'],
-      prompt: px('Why type ./hello.sh and not just hello.sh?', 'Why type .\\hello.ps1 and not just hello.ps1?'),
-      options: px(
-        ['./ says the file is right here, in this folder', './ makes the script run faster', 'The dot marks a hidden file'],
-        ['.\\ says the file is right here, in this folder', '.\\ makes the script run faster', 'The dot marks a hidden file'],
-      ),
+      prompt: px('Why type `./hello.sh` and not `hello.sh` on its own?', 'Why type `.\\hello.ps1` and not `hello.ps1` on its own?'),
+      options: same(['It says the file is right here, in this folder', 'It makes the script run faster', 'It marks a hidden file']),
       answer: same(0),
-      reasons: same([
-        'Right. Without it, the shell only looks in its list of installed commands, and says it cannot find it.',
-        'Speed has nothing to do with it.',
-        'A dot at the start of a name hides a file. Here the dot is a folder: this one.',
-      ]),
+      reasons: px(
+        [
+          'Right. Without it, the terminal only looks in its list of installed commands, and says it cannot find it.',
+          'Speed has nothing to do with it.',
+          'A dot at the start of a name hides a file. Here the dot is a folder: this one.',
+        ],
+        [
+          'Right. Without it, PowerShell only looks in its list of installed commands, and says it cannot find it.',
+          'Speed has nothing to do with it.',
+          'Here the dot is a folder: this one. (And Windows does not hide files with a dot.)',
+        ],
+      ),
       explain: same('This is a safety rule: a file in some folder cannot pretend to be a real command.'),
     }),
     task({
@@ -270,34 +280,42 @@ export const unit5Lesson2: Lesson = {
       id: 'u5-l2-c6',
       teaches: ['allow-scripts'],
       seed: same(fresh),
-      card: px(
-        {
+      card: {
+        linux: {
           title: 'chmod +x: allow a file to run',
-          body: 'A file you just made or downloaded is not allowed to run: you get **Permission denied**. `chmod +x` adds e**x**ecute permission, so it can.',
+          body: 'A file you just made or downloaded is not allowed to run: you get **Permission denied**. `chmod` (**ch**ange **mod**e) with `+x` adds e**x**ecute permission, so it can run.',
           example: 'chmod +x build.sh',
         },
-        {
+        mac: {
+          title: 'chmod +x: allow a file to run',
+          body: 'A file you just made or downloaded is not allowed to run: you get **permission denied**. `chmod` (**ch**ange **mod**e) with `+x` adds e**x**ecute permission, so it can run.',
+          example: 'chmod +x build.sh',
+        },
+        windows: {
           title: 'Allow your scripts to run',
-          body: 'A fresh Windows computer blocks every script. This lets scripts run **for you only** (`-Scope CurrentUser`). `RemoteSigned` means your own scripts run, and downloaded ones need a signature.',
+          body: 'Some Windows computers block every script at first: **running scripts is disabled on this system**. This command lets scripts run **for you only** (`-Scope CurrentUser`). `RemoteSigned` means scripts you made can run, and ones from the internet need their maker\'s signature.',
           example: 'Set-ExecutionPolicy -Scope CurrentUser RemoteSigned',
         },
-      ),
+      },
     }),
     build({
       id: 'u5-l2-c7',
       uses: ['allow-scripts'],
-      prompt: px('Build the command that lets build.sh run.', 'Build the command that lets your scripts run, without needing an Administrator.'),
+      prompt: px('Build the command that lets `build.sh` run.', 'Build the command that lets your scripts run, for you only.'),
       seed: same(fresh),
       goal: same({ kind: 'canRun', path: 'build.sh' }),
-      tokens: px(['build.sh', '-x', 'chmod', '+x', 'sudo', 'rm'], ['RemoteSigned', 'CurrentUser', 'Set-ExecutionPolicy', 'Restricted', '-Scope', 'Get-ExecutionPolicy']),
+      tokens: px(['build.sh', '-x', 'chmod', '+x', 'ls', 'rm'], ['RemoteSigned', 'CurrentUser', 'Set-ExecutionPolicy', 'Restricted', '-Scope', 'Get-ExecutionPolicy']),
       solutions: px([['chmod +x build.sh']], [['Set-ExecutionPolicy -Scope CurrentUser RemoteSigned']]),
       hints: px(['Change mode, add execute, then the file.'], ['Set the policy, for the current user, to RemoteSigned.']),
-      explain: same('Now the script is allowed to run.'),
+      explain: px(
+        'Now build.sh may run. `ls -l` would show it as `-rwxr-xr-x`: each `x` means "may run".',
+        'Now your own scripts may run. You only need to do this once.',
+      ),
     }),
     pick({
       id: 'u5-l2-c8',
       uses: ['allow-scripts', 'script'],
-      prompt: px('You just downloaded build.sh and type ./build.sh. What happens?', 'On a fresh Windows computer, you type .\\build.ps1. What happens?'),
+      prompt: px('You just downloaded `build.sh` and type `./build.sh`. What happens?', 'Scripts have never been allowed on this computer. You type `.\\build.ps1`. What happens?'),
       options: {
         linux: ['bash: ./build.sh: Permission denied', 'Build complete', 'bash: build.sh: command not found'],
         mac: ['zsh: permission denied: ./build.sh', 'Build complete', 'zsh: command not found: build.sh'],
@@ -305,10 +323,10 @@ export const unit5Lesson2: Lesson = {
       },
       answer: same(0),
       reasons: px(
-        ['Right: new files are not allowed to run until you chmod +x them.', 'Not yet. It needs permission first.', 'The ./ means the shell found it. It just may not run it.'],
-        ['Right: scripts are blocked until you change the execution policy.', 'Not yet. Scripts are blocked first.', 'Double-clicking might, but in the terminal you get an error.'],
+        ['Right: new files are not allowed to run until you `chmod +x` them.', 'Not yet. It needs permission first.', 'The `./` points right at the file, so the terminal finds it. It is just not allowed to run it.'],
+        ['Right: scripts are blocked until you change the execution policy.', 'Not yet. Scripts are blocked first.', 'Double-clicking it might, but in the terminal you get an error.'],
       ),
-      explain: px('Permission denied means "found it, not allowed". chmod +x fixes it.', 'Set-ExecutionPolicy -Scope CurrentUser RemoteSigned fixes it, once.'),
+      explain: px('Permission denied means "found it, not allowed". `chmod +x` fixes it.', '`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` fixes it, once.'),
     }),
     match({
       id: 'u5-l2-c9',
@@ -338,7 +356,11 @@ export const unit5Lesson2: Lesson = {
     task({
       id: 'u5-l2-c10',
       uses: ['script', 'allow-scripts'],
-      prompt: same('Herme downloaded a build script onto a brand new computer. Get it to run.'),
+      openHint: true,
+      prompt: px(
+        'Herme downloaded a build script onto a brand new computer. Get it to run.',
+        'Herme wrote a build script, but this computer does not let scripts run yet. Get it to run.',
+      ),
       seed: same(fresh),
       goal: built,
       solutions: px(
@@ -366,18 +388,18 @@ export const unit5Lesson2: Lesson = {
 // Lesson 3: Admin powers (admin, pkill)
 // ---------------------------------------------------------------------------
 
-const adminCard = px(
-  {
-    title: 'sudo: run as the administrator',
-    body: 'Some processes belong to the system (user **root**), and you get **Operation not permitted**. Put `sudo` in front to run one command as the administrator. On a real computer it asks for your password first.',
-    example: 'sudo kill 666',
-  },
-  {
+const SUDO_BODY = (error: string): string =>
+  `Some processes belong to **root**, the administrator account that runs the system. Stopping one says **${error}**. Put \`sudo\` in front to run one command as root. On a real computer it asks for your password first.`;
+
+const adminCard: PerOs<{ title: string; body: string; example: string }> = {
+  linux: { title: 'sudo: run as the administrator', body: SUDO_BODY('Operation not permitted'), example: 'sudo kill 666' },
+  mac: { title: 'sudo: run as the administrator', body: SUDO_BODY('operation not permitted'), example: 'sudo kill 666' },
+  windows: {
     title: 'Open an Administrator window',
-    body: 'System processes say **Access is denied**. You need a PowerShell window running as **Administrator**: this opens one, after Windows asks "Do you want to allow this app to make changes?"',
+    body: 'Processes that belong to the system say **Access is denied**. You need a PowerShell window running as **Administrator**. This opens one: `pwsh` is PowerShell\'s program name, and `-Verb RunAs` means "as Administrator". Windows asks "Do you want to allow this app to make changes?" first.',
     example: 'Start-Process pwsh -Verb RunAs',
   },
-);
+};
 
 export const unit5Lesson3: Lesson = {
   id: 'u5-l3',
@@ -391,33 +413,43 @@ export const unit5Lesson3: Lesson = {
       seed: same(crowded),
       goal: px(gone('updater'), { kind: 'isAdmin' }),
       line: px('sudo kill 666', 'Start-Process pwsh -Verb RunAs'),
-      explain: px('Gone. sudo works for one command, then you are back to normal.', 'You are now in the Administrator window. It stays that way until you close it.'),
+      explain: px(
+        'Gone. sudo works for one command, then you are back to normal. On a real computer, the password you type stays invisible. That is normal: keep typing and press Enter.',
+        'You are now in the Administrator window. It stays that way until you close it, so close it when you are done.',
+      ),
     }),
     pick({
       id: 'u5-l3-c3',
       uses: ['admin', 'kill'],
-      prompt: px('kill 666 says "Operation not permitted". What now?', 'Stop-Process -Id 666 says "Access is denied". What now?'),
+      prompt: {
+        linux: '`kill 666` says "Operation not permitted". What now?',
+        mac: '`kill 666` says "operation not permitted". What now?',
+        windows: '`Stop-Process -Id 666` says "Access is denied". What now?',
+      },
       options: px(
-        ['sudo kill 666', 'kill -9 666, to push harder', 'rm 666'],
+        ['sudo kill 666', 'kill -9 666', 'rm 666'],
         ['Open an Administrator window, then try again', 'Stop-Process -Id 666 -Force', 'Remove-Item 666'],
       ),
       answer: same(0),
       reasons: px(
-        ['Right: the problem is who you are, not how hard you ask.', 'A stronger signal does not help: you are still not allowed.', 'rm deletes files. 666 is a process, not a file.'],
-        ['Right: the problem is who you are, not how hard you ask.', '-Force skips the "are you sure?" question, but you are still not allowed.', 'Remove-Item deletes files. 666 is a process, not a file.'],
+        ['Right: the problem is who you are, not how hard you ask.', '`-9` makes kill more forceful, but you are still not allowed.', 'rm deletes files. 666 is a process, not a file.'],
+        ['Right: the problem is who you are, not how hard you ask.', '`-Force` skips the "are you sure?" question, but you are still not allowed.', 'Remove-Item deletes files. 666 is a process, not a file.'],
       ),
-      explain: same('"Not permitted" and "denied" mean: you need to be the administrator.'),
+      explain: px('"Not permitted" means: this needs root. That is what `sudo` is for.', '"Access is denied" means: this needs an Administrator window.'),
     }),
     task({
       id: 'u5-l3-c4',
       uses: ['admin', 'kill'],
       openHint: true,
-      prompt: same('The stuck updater (ID 666) is eating the CPU. Stop it.'),
+      prompt: same('The stuck updater (ID 666) is hogging the processor. Stop it.'),
       seed: same(crowded),
       goal: same(gone('updater')),
       solutions: px([['sudo kill 666']], [['Start-Process pwsh -Verb RunAs', 'Stop-Process -Id 666']]),
       hints: px(['It belongs to root, so you need sudo.', 'Type `sudo kill 666`.'], ['It belongs to the system, so you need an Administrator window first.', 'Type `Start-Process pwsh -Verb RunAs`, then `Stop-Process -Id 666`.']),
-      explain: same('The updater is gone, and the computer can breathe.'),
+      explain: px(
+        'The updater is gone, and the computer can breathe. sudo can change anything, so use it only when you know why a command needs it.',
+        'The updater is gone, and the computer can breathe. An Administrator window can change anything, so use it only when you need it.',
+      ),
     }),
     task({
       id: 'u5-l3-c5',
@@ -438,12 +470,12 @@ export const unit5Lesson3: Lesson = {
       card: px(
         {
           title: 'pkill: stop by name',
-          body: '`pkill` stops processes **by name** instead of ID, and it stops **every** process with that name. Handy when there are lots.',
+          body: '`pkill` stops processes **by name** instead of ID. It stops **every** process with that name, so check the name first. Handy when there are lots.',
           example: 'pkill music',
         },
         {
           title: 'Stop-Process -Name: stop by name',
-          body: '`-Name` stops processes **by name** instead of ID, and it stops **every** process with that name. Handy when there are lots.',
+          body: '`-Name` stops processes **by name** instead of ID. It stops **every** process with that name, so check the name first. Handy when there are lots.',
           example: 'Stop-Process -Name music',
         },
       ),
@@ -463,13 +495,13 @@ export const unit5Lesson3: Lesson = {
     pick({
       id: 'u5-l3-c8',
       uses: ['pkill', 'kill'],
-      prompt: px('What is the difference between kill and pkill?', 'What is the difference between Stop-Process -Id and -Name?'),
-      options: px(
-        ['kill takes an ID number, pkill takes a name', 'pkill is stronger than kill', 'pkill only works with sudo'],
-        ['-Id takes a number, -Name takes a name', '-Name is stronger than -Id', '-Name only works as Administrator'],
-      ),
+      prompt: px('How does `pkill` pick which processes to stop?', 'How does `Stop-Process -Name` pick which processes to stop?'),
+      options: same(['By name: every process called that', 'By ID: one exact process', 'By how hard they are working']),
       answer: same(0),
-      reasons: same(['Right. A name can match several processes, so be careful.', 'Both ask the process to stop in the same way.', 'Only processes that belong to the system need the administrator.']),
+      reasons: px(
+        ['Right. A name can match several processes, so be careful.', 'That is `kill`, with a PID.', 'Neither command looks at that. You check it with `ps aux` first.'],
+        ['Right. A name can match several processes, so be careful.', 'That is `Stop-Process -Id`.', 'Neither one looks at that. You check it with `Get-Process` first.'],
+      ),
       explain: same('ID for one exact process, name for all of them.'),
     }),
     match({
@@ -489,11 +521,12 @@ export const unit5Lesson3: Lesson = {
           ['Get-Process', 'List running processes'],
         ],
       ),
-      explain: same('That is Unit 5. You can now take charge of a misbehaving computer.'),
+      explain: same('Look first, then stop the right thing, with just enough power.'),
     }),
     task({
       id: 'u5-l3-c10',
       uses: ['admin', 'pkill', 'kill'],
+      openHint: true,
       prompt: same('Clean-up time: stop all the bubbles processes and the stuck updater (ID 666).'),
       seed: same(crowded),
       goal: all(gone('bubbles'), gone('updater')),
@@ -513,7 +546,7 @@ export const unit5Lesson3: Lesson = {
       goal: same({ kind: 'fileContains', path: 'procs.txt', text: 'bubbles' }),
       solutions: px([['ps aux > procs.txt']], [['Get-Process > procs.txt']]),
       hints: px(['List, then one arrow into the file.', 'Type `ps aux > procs.txt`.'], ['List, then one arrow into the file.', 'Type `Get-Process > procs.txt`.']),
-      explain: same('Saved for the history books.'),
+      explain: same('Saved for the history books. That is Unit 5 done: you can take charge of a misbehaving computer.'),
     }),
   ],
 };

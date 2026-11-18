@@ -2,7 +2,8 @@ import type { OS } from '../types';
 import { bash } from './bash';
 import type { Dialect } from './dialect';
 import { powershell } from './powershell';
-import { decodeError } from './error-decoder';
+import { decodeError, notFoundName } from './error-decoder';
+import { realCommand } from './real-commands';
 import { runEgg } from './eggs';
 import { explainWrongOs } from './wrong-os';
 import { zsh } from './zsh';
@@ -31,6 +32,16 @@ const withWrongOs = (d: Dialect): Dialect => ({
     if (r.exitCode === 0) return r;
     const wrongOs = r.wrongOs ?? explainWrongOs(d.os, line);
     if (wrongOs !== undefined) return { ...r, wrongOs };
+    // A real command Hermit doesn't simulate is curiosity, not a typo: say what it does, for free.
+    const missing = notFoundName(r.stderr);
+    const real = missing === undefined ? undefined : realCommand(d.os, missing);
+    if (missing !== undefined && real !== undefined) {
+      return { ...r, stderr: `hermit: ${missing} is a real command, but Hermit doesn't simulate it yet.`, decoded: `On your computer, \`${missing}\` ${real}. No heart lost.`, free: true };
+    }
+    if (/unrecognized option '--help'|unknown option -- -|invalid option -- '-'/.test(r.stderr) && /(^|\s)--help(\s|$)/.test(line)) {
+      const name = line.trim().split(/\s+/)[0] ?? '';
+      return { ...r, stderr: `hermit: --help isn't simulated yet.`, decoded: `On your computer, \`${name} --help\` prints a short guide to \`${name}\`. No heart lost.`, free: true };
+    }
     const decoded = decodeError(d.os, r.stderr, (name) => isCommand(d, name));
     return decoded === undefined ? r : { ...r, decoded };
   },
