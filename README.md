@@ -10,7 +10,7 @@ Entry for [Hackyard](https://hackyard.tech) Yard #7, theme "Remix". See [`SPEC.m
 
 ![Herme explains why rm -rf fails in PowerShell](docs/demo.gif)
 
-A 61-second tour: [`docs/demo.mp4`](docs/demo.mp4). The contest write-up is in [`SUBMISSION.md`](SUBMISSION.md).
+A 20-second ad: [`docs/demo.mp4`](docs/demo.mp4). The contest write-up is in [`SUBMISSION.md`](SUBMISSION.md).
 
 ## What's in it
 

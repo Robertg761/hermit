@@ -4,7 +4,7 @@ Theme: **Remix**
 
 - **Play it:** https://hermit-shell.vercel.app
 - **Repo:** https://github.com/Robertg761/hermit
-- **Demo video (61 seconds):** [`docs/demo.mp4`](docs/demo.mp4)
+- **Demo video (20 seconds):** [`docs/demo.mp4`](docs/demo.mp4)
 - **Builder:** Robert ([@Robertg761](https://github.com/Robertg761)), solo
 
 ![Herme explains why rm -rf fails in PowerShell](docs/demo.gif)
